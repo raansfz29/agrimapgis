@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Login Test - AgriMapGIS</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+  </head>
+  <body class="bg-light">
+    <div class="container mt-5">
+      <div class="row justify-content-center">
+        <div class="col-md-6">
+          <div class="card">
+            <div class="card-header">
+              <h4>Login Test - Available Credentials</h4>
+            </div>
+            <div class="card-body">
+              <div class="alert alert-info">
+                <strong>Available login credentials:</strong>
+                <ul class="mb-0 mt-2">
+                  <li>
+                    <strong>Admin:</strong> admin@agrimapgis.test / admin123
+                  </li>
+                  <li>
+                    <strong>User:</strong> budi@agrimapgis.test / (password
+                    needs to be set)
+                  </li>
+                </ul>
+              </div>
+
+              <div class="alert alert-warning">
+                <strong>Issue:</strong> If login keeps redirecting back to login
+                page, try:
+                <ol class="mb-0 mt-2">
+                  <li>Clear browser cookies/cache</li>
+                  <li>Check if session is working</li>
+                  <li>Verify database connection</li>
+                </ol>
+              </div>
+
+              <a href="/login" class="btn btn-primary">Go to Login Page</a>
+              <a href="/dashboard" class="btn btn-secondary"
+                >Try Dashboard (should redirect to login)</a
+              >
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
