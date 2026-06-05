@@ -25,6 +25,26 @@ Anggota dari sebuah kelompok tani yang mengelola lahan spesifik.
 
 ---
 
+## 📸 Cuplikan Antarmuka (Screenshots)
+
+Berikut adalah beberapa tampilan antarmuka (UI) dari sistem AgriMapGIS:
+
+<div align="center">
+  <img src="public/assets/images/landing/hero.png" width="800" alt="Halaman Utama (Landing Page)"><br>
+  <i>Halaman Utama (Landing Page)</i><br><br>
+
+  <img src="public/assets/images/landing/dashboard.png" width="800" alt="Dashboard Panel"><br>
+  <i>Dashboard & Statistik Pertanian</i><br><br>
+
+  <img src="public/assets/images/landing/mapping.png" width="800" alt="Pemetaan Poligon Lahan"><br>
+  <i>Pemetaan Poligon Lahan Interaktif</i><br><br>
+
+  <img src="public/assets/images/landing/ndvi.png" width="800" alt="Peta Tematik & Indeks Lahan"><br>
+  <i>Peta Tematik & Fase Tanam</i>
+</div>
+
+---
+
 ## 🌟 Fitur Unggulan
 
 * **Pemetaan Poligon Interaktif (Leaflet.js):** Lahan digambar dalam bentuk poligon GeoJSON akurat di atas *basemap* Google Satellite dan OpenStreetMap.
