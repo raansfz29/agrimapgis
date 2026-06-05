@@ -1,68 +1,71 @@
-# CodeIgniter 4 Application Starter
+# 🌾 AgriMapGIS
 
-## What is CodeIgniter?
+AgriMapGIS (Agricultural Mapping & Geographic Information System) adalah sistem informasi geografis berbasis web yang dirancang khusus untuk memetakan lahan pertanian, melacak aktivitas petani, dan mengelola mitigasi bencana secara terpusat. 
 
-CodeIgniter is a PHP full-stack web framework that is light, fast, flexible and secure.
-More information can be found at the [official site](https://codeigniter.com).
+Sistem ini memfasilitasi kolaborasi interaktif antara **Petani** dan **PPL** (Petugas Penyuluh Lapangan) melalui pemetaan spasial dan validasi geofencing.
 
-This repository holds a composer-installable app starter.
-It has been built from the
-[development repository](https://github.com/codeigniter4/CodeIgniter4).
+---
 
-More information about the plans for version 4 can be found in [CodeIgniter 4](https://forum.codeigniter.com/forumdisplay.php?fid=28) on the forums.
+## 👥 Aktor & Hak Akses (Role)
 
-You can read the [user guide](https://codeigniter.com/user_guide/)
-corresponding to the latest version of the framework.
+Sistem ini beroperasi dengan 2 peran utama:
 
-## Installation & updates
+### 1. PPL (Petugas Penyuluh Lapangan)
+Bertindak sebagai administrator wilayah yang membina beberapa Kelompok Tani sekaligus.
+* **Manajemen Peta:** Mengakses Peta Tematik yang menampilkan status lahan berdasarkan fase tanam, estimasi panen, dan area terdampak bencana.
+* **Verifikasi Aktivitas:** Menyetujui atau menolak laporan aktivitas bertani (pemupukan, penanaman, dll) yang diajukan oleh petani.
+* **Mitigasi Bencana:** Menandai lahan yang terdampak bencana darurat (Banjir, Hama, Kekeringan) yang otomatis akan mengubah visual peta lahan menjadi merah muda/kuning dan mengirimkan peringatan massal.
+* **Komunikasi:** Mengirimkan pesan dan pengumuman kepada petani binaannya.
 
-`composer create-project codeigniter4/appstarter` then `composer update` whenever
-there is a new release of the framework.
+### 2. Petani
+Anggota dari sebuah kelompok tani yang mengelola lahan spesifik.
+* **Laporan Aktivitas Geofencing:** Petani dapat melaporkan kegiatan bertani harian. Sistem menggunakan **GPS Geofencing** ketat (batas toleransi 100 meter). Jika petani melaporkan aktivitas dari rumah (di luar area lahan), sistem akan memblokir otomatis data tersebut.
+* **Pemantauan Lahan:** Melihat peta poligon lahan milik kelompoknya di atas citra satelit.
+* **Pusat Notifikasi:** Menerima notifikasi otomatis untuk peringatan bencana, persetujuan aktivitas, notifikasi panen, dan pesan masuk.
 
-When updating, check the release notes to see if there are any changes you might need to apply
-to your `app` folder. The affected files can be copied or merged from
-`vendor/codeigniter4/framework/app`.
+---
 
-## Setup
+## 🌟 Fitur Unggulan
 
-Copy `env` to `.env` and tailor for your app, specifically the baseURL
-and any database settings.
+* **Pemetaan Poligon Interaktif (Leaflet.js):** Lahan digambar dalam bentuk poligon GeoJSON akurat di atas *basemap* Google Satellite dan OpenStreetMap.
+* **Geofencing Spasial Ketat:** Validasi lokasi aktivitas menggunakan kalkulasi geometris MySQL (`ST_Contains` dan `ST_Distance` yang dikonversi ke skala meter bumi).
+* **Smart Thematic Map:** Warna lahan di peta otomatis berubah sesuai dengan data aktivitas terakhir (contoh: Hijau Muda untuk Fase Vegetatif, Kuning untuk Siap Panen).
+* **Ngrok Ready:** Konfigurasi *backend* otomatis mendeteksi lalu lintas dari terowongan Ngrok (`X-Forwarded-Host`) dan mengamankan Cookie (Secure/Lax) sehingga sistem dapat langsung di-online-kan ke internet tanpa *error routing*.
+* **Manajemen Sesi Otomatis:** Sistem notifikasi terbagi rapi dalam kategori (Sistem, Laporan, Peringatan) dengan algoritma kalkulasi waktu relatif (*time-ago*).
 
-## Important Change with index.php
+---
 
-`index.php` is no longer in the root of the project! It has been moved inside the *public* folder,
-for better security and separation of components.
+## 💻 Teknologi yang Digunakan
 
-This means that you should configure your web server to "point" to your project's *public* folder, and
-not to the project root. A better practice would be to configure a virtual host to point there. A poor practice would be to point your web server to the project root and expect to enter *public/...*, as the rest of your logic and the
-framework are exposed.
+* **Backend:** PHP 8.1+ & Framework CodeIgniter 4
+* **Database:** MySQL 8.0+ (Menggunakan tipe data Spatial `GEOMETRY` dengan SRID 0)
+* **Frontend:** HTML5, CSS3, JavaScript (Vanilla & jQuery), Bootstrap 5
+* **Web Mapping:** Leaflet.js
+* **Local Server:** Laragon
 
-**Please** read the user guide for a better explanation of how CI4 works!
+---
 
-## Repository Management
+## 🚀 Cara Menjalankan Aplikasi
 
-We use GitHub issues, in our main repository, to track **BUGS** and to track approved **DEVELOPMENT** work packages.
-We use our [forum](http://forum.codeigniter.com) to provide SUPPORT and to discuss
-FEATURE REQUESTS.
+### 1. Kebutuhan Sistem
+Pastikan Anda sudah meng-install **Laragon** (atau XAMPP) dengan PHP >= 8.1 dan MySQL versi 8 ke atas.
 
-This repository is a "distribution" one, built by our release preparation script.
-Problems with it can be raised on our forum, or as issues in the main repository.
+### 2. Clone / Unduh Repository
+Letakkan folder proyek di dalam direktori root server lokal Anda (misalnya `C:\laragon\www\agrimapgis`).
 
-## Server Requirements
+### 3. Konfigurasi Database
+1. Buka phpMyAdmin / HeidiSQL.
+2. Buat database baru bernama `agrimapgis`.
+3. Import file struktur SQL (*jika ada*) atau jalankan seeder CodeIgniter yang tersedia (`php spark db:seed AgriSeeder`).
 
-PHP version 8.1 or higher is required, with the following extensions installed:
+### 4. Meng-online-kan Sistem (Ngrok)
+Untuk mengakses sistem dari perangkat lain (seperti Handphone) melalui internet:
+1. Install Ngrok di komputer Anda.
+2. Jalankan perintah terminal:
+   ```bash
+   ngrok http 80 --host-header=agrimapgis.test
+   ```
+3. Buka *Forwarding URL* berwarna hijau yang diberikan Ngrok di browser HP/komputer lain. Sistem akan otomatis menyesuaikan konfigurasinya tanpa kendala *login* atau *CSS* yang rusak!
 
-- [intl](http://php.net/manual/en/intl.requirements.php)
-- [mbstring](http://php.net/manual/en/mbstring.installation.php)
-
-> [!WARNING]
-> - The end of life date for PHP 7.4 was November 28, 2022.
-> - The end of life date for PHP 8.0 was November 26, 2023.
-> - If you are still using PHP 7.4 or 8.0, you should upgrade immediately.
-> - The end of life date for PHP 8.1 will be December 31, 2025.
-
-Additionally, make sure that the following extensions are enabled in your PHP:
-
-- json (enabled by default - don't turn it off)
-- [mysqlnd](http://php.net/manual/en/mysqlnd.install.php) if you plan to use MySQL
-- [libcurl](http://php.net/manual/en/curl.requirements.php) if you plan to use the HTTP\CURLRequest library
+---
+*Dokumentasi ini disusun oleh AI Assistant - 2026*
