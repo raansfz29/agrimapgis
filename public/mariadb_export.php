@@ -9,7 +9,7 @@ fwrite($fp, "SET FOREIGN_KEY_CHECKS = 0;\n");
 fwrite($fp, "SET SQL_MODE = \"NO_AUTO_VALUE_ON_ZERO\";\n");
 fwrite($fp, "SET time_zone = \"+00:00\";\n\n");
 
-$tables = ['farmer_groups', 'users', 'lands', 'activities', 'disaster_logs', 'notifications'];
+$tables = ['farmer_groups', 'users', 'lands', 'activities', 'disaster_logs', 'notifications', 'messages'];
 
 // DROP tables in REVERSE order
 $reverseTables = array_reverse($tables);
