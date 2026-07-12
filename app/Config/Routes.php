@@ -64,6 +64,7 @@ $routes->get('/map/api-heatmap', 'Map::apiHeatmap');
 
 // Notification Routes
 $routes->get('/notification', 'Notification::index');
+$routes->get('/notifications', 'Notification::index');
 $routes->get('/notification/api-get', 'Notification::apiGet');
 $routes->get('/notification/read/(:num)', 'Notification::markAsRead/$1');
 $routes->get('/notification/read-all', 'Notification::markAllRead');
