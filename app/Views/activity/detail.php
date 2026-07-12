@@ -445,9 +445,9 @@
 document.addEventListener("DOMContentLoaded", function() {
     var wkt = "<?= $activity['koordinat_wkt'] ?>";
     var coords = wkt.replace('POINT(', '').replace(')', '').split(' ');
-    // In MySQL 8.0 SRID 4326, the axis order for ST_AsText is Lat Long
-    var lat = parseFloat(coords[0]);
-    var lng = parseFloat(coords[1]);
+    // WKT POINT format is POINT(longitude latitude)
+    var lng = parseFloat(coords[0]);
+    var lat = parseFloat(coords[1]);
 
     if (!isNaN(lat) && !isNaN(lng)) {
         var map = L.map('activityMap', { 
