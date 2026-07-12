@@ -111,12 +111,12 @@
 
 <!-- Hero -->
 <div class="activity-hero shadow-sm">
-    <div class="d-flex justify-content-between align-items-center">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3">
         <div>
             <h2 class="fw-800 mb-1" style="font-size:24px;">Aktivitas Pertanian</h2>
             <p class="mb-0 fw-600" style="opacity:0.8; font-size:13px;">Riwayat pengerjaan lahan &amp; status verifikasi dari petugas lapangan.</p>
         </div>
-        <a href="<?= base_url('activity/input') ?>" class="btn-hero">
+        <a href="<?= base_url('activity/input') ?>" class="btn-hero text-center" style="white-space: nowrap;">
             <i class="fas fa-plus-circle"></i> Input Aktivitas Baru
         </a>
     </div>
@@ -174,14 +174,14 @@
 
     <!-- Table -->
     <div class="table-responsive">
-        <table class="table table-borderless mb-0" style="table-layout: fixed; width: 100%;">
+        <table class="table table-borderless mb-0 align-middle" style="min-width: 800px; white-space: nowrap;">
             <colgroup>
-                <col style="width: 28%;">  <!-- JENIS AKTIVITAS -->
-                <col style="width: 14%;">  <!-- PETANI -->
-                <col style="width: 13%;">  <!-- TANGGAL -->
-                <col style="width: 17%;">  <!-- LAHAN -->
-                <col style="width: 12%;">  <!-- STATUS -->
-                <col style="width: 16%;">  <!-- AKSI -->
+                <col style="width: 25%;">  <!-- JENIS AKTIVITAS -->
+                <col style="width: 15%;">  <!-- PETANI -->
+                <col style="width: 15%;">  <!-- TANGGAL -->
+                <col style="width: 15%;">  <!-- LAHAN -->
+                <col style="width: 15%;">  <!-- STATUS -->
+                <col style="width: 15%;">  <!-- AKSI -->
             </colgroup>
             <thead style="background:#f8fafc;">
                 <tr>

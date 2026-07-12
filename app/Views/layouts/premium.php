@@ -14,8 +14,10 @@
     <meta name="theme-color" content="#1e7e34">
     <link rel="apple-touch-icon" href="/images/dummy-icon-192x192.png">
 
-    <!-- CSRF Token for AJAX -->
+    <!-- CSRF Token for AJAX & PWA Sync -->
     <meta name="<?= csrf_token() ?>" content="<?= csrf_hash() ?>" id="csrf-token">
+    <meta name="csrf-token-name" content="<?= csrf_token() ?>">
+    <meta name="csrf-token-value" content="<?= csrf_hash() ?>">
 
     <?= $this->renderSection('styles') ?>
     <style>
@@ -57,6 +59,7 @@
             z-index: 1100;
             padding: 30px;
             border: 1px solid var(--border-color);
+            overflow-y: auto;
         }
 
         .sidebar-brand-box { display: flex; align-items: center; gap: 15px; margin-bottom: 40px; }
@@ -203,14 +206,28 @@
 
         /* Responsive Breakpoints */
         @media (max-width: 991px) {
+            html, body {
+                overflow-x: hidden;
+                width: 100vw;
+            }
             .sidebar {
                 transform: translateX(-150%);
                 transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
                 border-radius: 0 24px 24px 0;
                 top: 0; bottom: 0; left: 0;
                 box-shadow: 10px 0 40px rgba(0,0,0,0.1);
+                padding: 20px 15px; /* Reduce padding on mobile to save vertical space */
             }
             .sidebar.open { transform: translateX(0); }
+            
+            /* Compact Sidebar specifically for mobile to fit without scrolling */
+            .sidebar-brand-box { margin-bottom: 20px; }
+            .brand-icon { width: 35px; height: 35px; font-size: 18px; }
+            .brand-info h5 { font-size: 15px; }
+            .sidebar-menu li { margin-bottom: 2px; }
+            .sidebar-menu a { padding: 10px 15px; gap: 10px; font-size: 12px; }
+            .sidebar-menu a i { font-size: 14px; width: 20px; }
+            .btn-logout { padding: 10px; font-size: 12px; margin-top: 10px; }
             
             .mobile-header { display: flex; }
             
@@ -261,7 +278,69 @@
                 transform: none !important;
                 z-index: 2000;
             }
-            .footer-mockup { flex-direction: column; gap: 10px; text-align: center; }
+            .premium-card { padding: 10px !important; }
+            .footer-mockup { flex-direction: column; gap: 8px; text-align: center; padding: 10px; }
+
+            /* Aggressively scale down layout spacing to eliminate unnecessary scrolling */
+            .row, .row.g-4, .row.g-3, .row.gy-4, .row.gy-3, .row.gx-4, .row.gx-3 { 
+                --bs-gutter-y: 8px !important; 
+                --bs-gutter-x: 8px !important; 
+            }
+            
+            .mb-4, .my-4, .mb-md-4, .mb-sm-4 { margin-bottom: 12px !important; }
+            .mt-4, .my-4, .mt-md-4, .mt-sm-4 { margin-top: 12px !important; }
+            .mb-3, .my-3, .mb-md-3, .mb-sm-3 { margin-bottom: 8px !important; }
+            .mt-3, .my-3, .mt-md-3, .mt-sm-3 { margin-top: 8px !important; }
+            .p-4, .p-md-4, .p-3, .p-md-3 { padding: 10px !important; }
+            .gap-4, .gap-md-4 { gap: 10px !important; }
+            .gap-3, .gap-md-3 { gap: 8px !important; }
+
+            /* Scale down fonts heavily for maximum data density */
+            h2 { font-size: 16px !important; margin-bottom: 4px !important; }
+            h3 { font-size: 14px !important; margin-bottom: 4px !important; }
+            h4 { font-size: 13px !important; margin-bottom: 4px !important; }
+            h5 { font-size: 12px !important; margin-bottom: 2px !important; font-weight: 800 !important; }
+            h6 { font-size: 11px !important; margin-bottom: 2px !important; font-weight: 800 !important; }
+            p, span, div, td, th { font-size: 11px; }
+            
+            /* Compact form inputs */
+            .form-control, .form-select { 
+                padding: 6px 12px !important; 
+                font-size: 11px !important; 
+            }
+            .form-label { margin-bottom: 4px !important; font-size: 10px !important; font-weight: 800; }
+            
+            .btn {
+                padding: 6px 12px !important;
+                font-size: 11px !important;
+                white-space: nowrap !important; /* Prevent text wrapping so they don't become circles */
+            }
+            .btn i { font-size: 11px !important; }
+            
+            .table-responsive .table {
+                white-space: nowrap !important; /* Prevent squishing even at tiny scale */
+            }
+            .table th, .table td {
+                padding: 4px 6px !important;
+                font-size: 9px !important;
+            }
+            .badge {
+                padding: 2px 4px !important;
+                font-size: 8px !important;
+            }
+
+            .page-title-area {
+                flex-direction: row !important;
+                align-items: center !important;
+                flex-wrap: wrap !important; /* Allow buttons to wrap to next line if they don't fit */
+                gap: 15px !important;
+            }
+            .page-title-area .d-flex.gap-3 {
+                flex-direction: row;
+                flex-wrap: wrap; /* Allow multiple buttons to wrap */
+                gap: 8px !important;
+                width: auto;
+            }
         }
 
         /* Global Print Styles - New Government Theme */
@@ -483,6 +562,11 @@
 
             <?php if (session()->get('role') === 'petani'): ?>
             <li>
+                <a href="<?= base_url('farmer-groups') ?>" class="<?= $segment == 'farmer-groups' ? 'active' : '' ?>">
+                    <i class="fas fa-users-viewfinder"></i> <span>Anggota Kelompok</span>
+                </a>
+            </li>
+            <li>
                 <a href="<?= base_url('peta-gis') ?>" class="<?= $segment == 'peta-gis' ? 'active' : '' ?>">
                     <i class="fas fa-map-marked-alt"></i> <span>Peta & Lahan Kelompok</span>
                 </a>
@@ -500,12 +584,15 @@
             </li>
             <?php endif; ?>
 
-            <?php if (session()->get('role') === 'ppl'): ?>
+            <?php if (session()->get('role') === 'ppl' || session()->get('role') === 'petani'): ?>
             <li>
                 <a href="<?= base_url('reports') ?>" class="<?= $segment == 'reports' ? 'active' : '' ?>">
                     <i class="fas fa-chart-line"></i> <span>Statistik & KPI</span>
                 </a>
             </li>
+            <?php endif; ?>
+            
+            <?php if (session()->get('role') === 'ppl'): ?>
             <li>
                 <a href="<?= base_url('farmer-groups') ?>" class="<?= $segment == 'farmer-groups' ? 'active' : '' ?>">
                     <i class="fas fa-users-viewfinder"></i> <span>Kelompok Tani</span>
@@ -526,7 +613,7 @@
             </li>
             
             <li>
-                <a href="<?= base_url('notifications') ?>" class="<?= $segment == 'notifications' ? 'active' : '' ?>">
+                <a href="<?= base_url('notification') ?>" class="<?= $segment == 'notification' ? 'active' : '' ?>">
                     <i class="fas fa-bell"></i> <span>Notifikasi</span>
                 </a>
             </li>
@@ -581,7 +668,7 @@
                                     $icon = $n['tipe'] === 'danger' ? 'fa-exclamation-triangle' : ($n['tipe'] === 'warning' ? 'fa-exclamation-circle' : 'fa-info-circle');
                                     $color = $n['tipe'] ?: 'info';
                                 ?>
-                                <a href="<?= base_url('notifications') ?>" class="notif-item-mini unread" onclick="markRead(<?= $n['id_notif'] ?>)">
+                                <a href="<?= base_url('notification') ?>" class="notif-item-mini unread" onclick="markRead(<?= $n['id_notif'] ?>)">
                                     <div class="notif-icon-box bg-<?= $color ?> bg-opacity-10 text-<?= $color ?>">
                                         <i class="fas <?= $icon ?>"></i>
                                     </div>
@@ -595,7 +682,7 @@
                         <?php endif; ?>
                     </div>
                     <div class="notif-footer">
-                        <a href="<?= base_url('notifications') ?>">Lihat Semua Notifikasi</a>
+                        <a href="<?= base_url('notification') ?>">Lihat Semua Notifikasi</a>
                     </div>
                 </div>
             </div>
@@ -628,9 +715,8 @@
         </div>
         
         <?php if (!($no_padding ?? false)): ?>
-        <div class="footer-mockup">
-            <span>AgriMapGIS • High-Fidelity Mockup</span>
-            <span>Agriculture Modern • Green / Earth / Gold Palette</span>
+        <div class="mt-5 pb-3 text-center opacity-50 small fw-bold">
+            &copy; <?= date('Y') ?> AgriMapGIS. Hak Cipta Dilindungi.
         </div>
         <?php endif; ?>
     </div>
@@ -686,7 +772,7 @@
                         const icon = n.tipe === 'danger' ? 'fa-exclamation-triangle' : (n.tipe === 'warning' ? 'fa-exclamation-circle' : 'fa-info-circle');
                         const color = n.tipe || 'info';
                         html += `
-                            <a href="<?= base_url('notifications') ?>" class="notif-item-mini unread" onclick="markRead(${n.id_notif})">
+                            <a href="<?= base_url('notification') ?>" class="notif-item-mini unread" onclick="markRead(${n.id_notif})">
                                 <div class="notif-icon-box bg-${color} bg-opacity-10 text-${color}">
                                     <i class="fas ${icon}"></i>
                                 </div>

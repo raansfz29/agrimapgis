@@ -30,6 +30,9 @@ class LandModel extends Model
         'created_at'
     ];
 
+    // Disable auto timestamp management — lands table only has created_at, no updated_at
+    protected $useTimestamps = false;
+
     /**
      * Get lands with geometry as GeoJSON
      */
@@ -37,7 +40,7 @@ class LandModel extends Model
     {
         $builder = $this->builder();
         $builder->select('id_lahan, id_kelompok, id_user, nama_lahan, komoditas, status_fase, status_bencana, alamat, luas, latitude, longitude, created_at');
-        $builder->select('ST_AsGeoJSON(geom, 6, 2) as geojson');
+        $builder->select('ST_AsGeoJSON(geom, 6, 0) as geojson');
         
         if ($id_lahan !== null) {
             $builder->where('id_lahan', $id_lahan);
@@ -45,6 +48,36 @@ class LandModel extends Model
         }
 
         return $builder->get()->getResultArray();
+    }
+
+    /**
+     * Update land's status_fase. 
+     * Only upgrades the phase — never downgrades (e.g. won't go panen→persiapan).
+     */
+    public function updateLandFase(int $idLahan, string $newFase): bool
+    {
+        // Phase progression order — higher index = later stage
+        $order = ['persiapan', 'tanam', 'pemeliharaan', 'panen', 'bera'];
+
+        $land = $this->find($idLahan);
+        if (!$land) return false;
+
+        $currentFase = $land['status_fase'] ?? 'persiapan';
+
+        // Allow downgrade only to 'persiapan' (new cycle after bera)
+        $currentIdx = array_search($currentFase, $order);
+        $newIdx     = array_search($newFase, $order);
+
+        // Only update if new phase is same or later than current (forward only)
+        if ($newIdx !== false && ($currentIdx === false || $newIdx >= $currentIdx)) {
+            $db = \Config\Database::connect();
+            $db->table($this->table)
+               ->where($this->primaryKey, $idLahan)
+               ->update(['status_fase' => $newFase]);
+            return true;
+        }
+
+        return false;
     }
 
     /**
@@ -63,7 +96,8 @@ class LandModel extends Model
         $luas = $data['luas'] ?? 0;
         if ($luas <= 0) {
             try {
-                $areaSql = "SELECT ST_Area(ST_GeomFromGeoJSON(?)) * 111319 * 111319 / 10000 as area";
+                // For SRID 4326 in MySQL 8, ST_Area returns square meters natively.
+                $areaSql = "SELECT ST_Area(ST_GeomFromGeoJSON(?)) / 10000 as area";
                 $res = $db->query($areaSql, [$geojson])->getRowArray();
                 $luas = $res['area'] ?? 0;
             } catch (\Exception $e) {
@@ -92,6 +126,54 @@ class LandModel extends Model
         }
 
         return $db->insertID();
+    }
+
+    /**
+     * Update land with Polygon GeoJSON
+     */
+    public function updateLandWithGeoJSON($id, $data, $geojson)
+    {
+        $db = \Config\Database::connect();
+        
+        $sql = "UPDATE {$this->table} 
+                SET id_kelompok = ?, id_user = ?, nama_lahan = ?, komoditas = ?, alamat = ?, status_fase = ?, geom = ST_GeomFromGeoJSON(?), luas = ?, latitude = ?, longitude = ? 
+                WHERE id_lahan = ?";
+        
+        // Calculate area if not provided
+        $luas = $data['luas'] ?? 0;
+        if ($luas <= 0) {
+            try {
+                // For SRID 4326 in MySQL 8, ST_Area returns square meters natively.
+                $areaSql = "SELECT ST_Area(ST_GeomFromGeoJSON(?)) / 10000 as area";
+                $res = $db->query($areaSql, [$geojson])->getRowArray();
+                $luas = $res['area'] ?? 0;
+            } catch (\Exception $e) {
+                $luas = 0;
+            }
+        }
+
+        $params = [
+            (int)$data['id_kelompok'],
+            isset($data['id_user']) && !empty($data['id_user']) ? (int)$data['id_user'] : null,
+            $data['nama_lahan'],
+            $data['komoditas'],
+            $data['alamat'] ?? '',
+            $data['status_fase'] ?? 'persiapan',
+            $geojson,
+            (float)$luas,
+            $data['latitude'] ?? null,
+            $data['longitude'] ?? null,
+            (int)$id
+        ];
+
+        $result = $db->query($sql, $params);
+        
+        if (!$result) {
+            $error = $db->error();
+            throw new \CodeIgniter\Database\Exceptions\DatabaseException('Gagal update lahan ke database: ' . ($error['message'] ?? 'Unknown Error'));
+        }
+
+        return true;
     }
 
     /**
@@ -223,37 +305,104 @@ class LandModel extends Model
             $yieldPerHa = 1.5;
         }
 
-        // Cari aktivitas 'tanam' yang approved untuk dapatkan tanggal tanam (case-insensitive)
-        $planting = $db->table('activities')
-            ->where('id_lahan', $id_lahan)
-            ->whereIn('LOWER(jenis_aktivitas)', ['tanam', 'penanaman'])
-            ->where('status', 'approved')
-            ->orderBy('tanggal', 'DESC')
-            ->get()->getRowArray();
+        // Historical average: rata-rata hasil panen nyata untuk komoditas ini
+        // Gunakan raw query agar LOWER() tidak bermasalah dengan CI4 query builder
+        $histRaw = $db->query(
+            "SELECT SUM(a.hasil_panen) as total_yield, SUM(l.luas) as total_area
+             FROM activities a
+             JOIN lands l ON l.id_lahan = a.id_lahan
+             WHERE a.jenis_aktivitas = 'panen'
+               AND a.status = 'approved'
+               AND a.hasil_panen > 0
+               AND LOWER(l.komoditas) LIKE ?",
+            ['%' . $commodity . '%']
+        );
+        $histQuery = $histRaw ? $histRaw->getRowArray() : null;
 
-        // Fallback: jika fase lahan = 'panen' tapi tak ada aktivitas tanam,
-        // anggap tanggal tanam adalah (hari ini - duration hari)
-        if (!$planting) {
-            if ($land['status_fase'] === 'panen') {
-                // Lahan sudah di fase panen — estimasi panen = hari ini
-                $harvestDate  = new \DateTime();
-                $plantingDate = (clone $harvestDate)->sub(new \DateInterval('P' . $duration . 'D'));
-            } else {
-                return null; // Belum tanam, tidak bisa prediksi
+        if ($histQuery && $histQuery['total_area'] > 0 && $histQuery['total_yield'] > 0) {
+            $historicalAvg = (float)$histQuery['total_yield'] / (float)$histQuery['total_area'];
+            // Cap sanity bounds (0.5 to 15 ton/ha) to prevent data skewing
+            if ($historicalAvg >= 0.5 && $historicalAvg <= 15.0) {
+                $yieldPerHa = $historicalAvg;
             }
-        } else {
-            $plantingDate = new \DateTime($planting['tanggal']);
-            $harvestDate  = (clone $plantingDate)->add(new \DateInterval('P' . $duration . 'D'));
         }
 
-        $today      = new \DateTime();
-        $diff       = $today->diff($harvestDate);
+        // 1. Dapatkan tanggal PANEN terakhir (batas akhir siklus sebelumnya)
+        $latestPanenRaw = $db->query(
+            "SELECT MAX(tanggal) as tgl FROM activities WHERE id_lahan = ? AND jenis_aktivitas = 'panen' AND status = 'approved'",
+            [(int)$id_lahan]
+        );
+        $panenRow = $latestPanenRaw ? $latestPanenRaw->getRowArray() : null;
+        $latestPanen = $panenRow ? $panenRow['tgl'] : null;
+
+        // 2. Cari aktivitas TANAM terakhir di SIKLUS INI (setelah panen terakhir)
+        $plantingQuery = "SELECT * FROM activities 
+                          WHERE id_lahan = ? 
+                            AND LOWER(jenis_aktivitas) IN ('tanam', 'penanaman') 
+                            AND status = 'approved'";
+        $params = [(int)$id_lahan];
+
+        if ($latestPanen) {
+            $plantingQuery .= " AND tanggal > ?";
+            $params[] = $latestPanen;
+        }
+        $plantingQuery .= " ORDER BY tanggal DESC LIMIT 1";
+
+        $plantingRaw = $db->query($plantingQuery, $params);
+        $planting = $plantingRaw ? $plantingRaw->getRowArray() : null;
+
+        // 3. Fallback: Jika tidak ada aktivitas tanam formal di siklus ini
+        if (!$planting) {
+            // Cari aktivitas pertanian APAPUN yang terjadi setelah panen terakhir
+            // Kita kecualikan 'panen' dan 'bencana' karena petani bisa mengisi jenis_aktivitas secara custom (misal: 'Pemupukan NPK', 'pemeliharaan')
+            $anyQuery = "SELECT MIN(tanggal) as tgl_pertama FROM activities 
+                         WHERE id_lahan = ? 
+                           AND status = 'approved' 
+                           AND LOWER(jenis_aktivitas) NOT LIKE '%panen%' 
+                           AND LOWER(jenis_aktivitas) NOT LIKE '%bencana%'";
+            $anyParams = [(int)$id_lahan];
+
+            if ($latestPanen) {
+                $anyQuery .= " AND tanggal > ?";
+                $anyParams[] = $latestPanen;
+            }
+
+            $anyRaw = $db->query($anyQuery, $anyParams);
+            $anyRow = $anyRaw ? $anyRaw->getRowArray() : null;
+
+            if ($anyRow && !empty($anyRow['tgl_pertama']) 
+                && in_array($land['status_fase'], ['tanam', 'pemeliharaan', 'panen'])) {
+                // Ada aktivitas pertanian di siklus baru ini -> gunakan sebagai asumsi tanggal tanam
+                $plantingDate = new \DateTime($anyRow['tgl_pertama']);
+                $harvestDate  = (clone $plantingDate)->add(new \DateInterval('P' . $duration . 'D'));
+                $sourceLabel  = 'aktivitas_pertama';
+            } elseif (!$latestPanen && in_array($land['status_fase'], ['tanam', 'pemeliharaan', 'panen'])) {
+                // Jika lahan BARU SAJA dibuat (belum pernah panen sama sekali), gunakan created_at
+                $plantingDate = new \DateTime($land['created_at']);
+                $harvestDate  = (clone $plantingDate)->add(new \DateInterval('P' . $duration . 'D'));
+                $sourceLabel  = 'status_fase';
+
+                if ($land['status_fase'] === 'panen' && $harvestDate > new \DateTime()) {
+                    $harvestDate = new \DateTime();
+                }
+            } else {
+                // Lahan sudah pernah panen, sedang fase aktif, tapi BELUM ada aktivitas di siklus ini
+                return null; 
+            }
+        } else {
+            // Menggunakan tanggal tanam dari log tanam formal siklus ini
+            $plantingDate = new \DateTime($planting['tanggal']);
+            $harvestDate  = (clone $plantingDate)->add(new \DateInterval('P' . $duration . 'D'));
+            $sourceLabel  = 'aktivitas_tanam';
+        }
+
+        $today       = new \DateTime();
+        $diff        = $today->diff($harvestDate);
         $hariTersisa = ($harvestDate >= $today) ? (int)$diff->days : -(int)$diff->days;
 
-        // Fix anomalous area size (cap at 100 Ha for prediction logic to avoid absurd numbers)
+        // Koreksi luas anomali (cap 100 Ha untuk hindari angka absurd)
         $luasValid = (float)$land['luas'];
         if ($luasValid > 100) {
-            // Assume input error like 1007.11 instead of 1.00711
             $luasValid = $luasValid / 1000;
         }
 
@@ -264,7 +413,7 @@ class LandModel extends Model
             'satuan'        => 'ton',
             'komoditas'     => $land['komoditas'],
             'nama_lahan'    => $land['nama_lahan'],
-            'source'        => $planting ? 'aktivitas_tanam' : 'status_fase',
+            'source'        => $sourceLabel,
         ];
     }
 
@@ -279,12 +428,29 @@ class LandModel extends Model
             'coordinates' => [(float)$longitude, (float)$latitude]
         ]);
         
-        // Force SRID to 0 to match the geom column in lands table
-        $sql = "SELECT ST_Contains(geom, ST_GeomFromGeoJSON(?, 2, 0)) as is_inside,
-                       (ST_Distance(geom, ST_GeomFromGeoJSON(?, 2, 0)) * 111319) as distance
+        // First, check the exact SRID of this specific land to determine axis ordering
+        $sridSql = "SELECT ST_SRID(geom) as srid FROM lands WHERE id_lahan = ?";
+        $sridRow = $db->query($sridSql, [$id_lahan])->getRowArray();
+        $srid = $sridRow ? (int)$sridRow['srid'] : 0;
+        
+        // MySQL 8 strict mode enforces (Latitude Longitude) order for SRID 4326.
+        // For SRID 0, it expects pure Cartesian (Longitude Latitude).
+        if ($srid === 4326) {
+            $ptWKT = "POINT({$latitude} {$longitude})";
+        } else {
+            $ptWKT = "POINT({$longitude} {$latitude})";
+        }
+        
+        // Match the SRID dynamically to prevent "different srids" exceptions.
+        // If the SRID is 4326, MySQL natively calculates distance in meters. If 0, in degrees (must multiply by 111319).
+        $sql = "SELECT ST_Contains(geom, ST_GeomFromText('{$ptWKT}', {$srid})) as is_inside,
+                       IF({$srid} = 4326, 
+                          ST_Distance(geom, ST_GeomFromText('{$ptWKT}', {$srid})), 
+                          ST_Distance(geom, ST_GeomFromText('{$ptWKT}', {$srid})) * 111319
+                       ) as distance
                 FROM lands WHERE id_lahan = ?";
         
-        return $db->query($sql, [$pointGeoJSON, $pointGeoJSON, $id_lahan])->getRowArray();
+        return $db->query($sql, [$id_lahan])->getRowArray();
     }
 
     public function isWithinLand($id_lahan, $longitude, $latitude)

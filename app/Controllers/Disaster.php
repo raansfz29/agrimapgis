@@ -116,6 +116,10 @@ class Disaster extends BaseController
                 . "================================\n"
                 . "Dikirim oleh PPL {$senderNama} via AgriMapGIS.\n"
                 . "Hubungi PPL Anda untuk bantuan teknis lebih lanjut.";
+                
+            if (!empty($land['foto_bencana'])) {
+                $pesanDarurat .= "\n\n[FOTO_BENCANA:" . $land['foto_bencana'] . "]";
+            }
 
             $farmers = $userModel
                 ->where('role', 'petani')
@@ -159,8 +163,8 @@ class Disaster extends BaseController
 
     public function activate($id)
     {
-        if (!session()->get('is_logged_in') || session()->get('role') === 'petani') {
-            return redirect()->to('/login')->with('error', 'Akses ditolak. Hanya PPL dan Admin yang dapat mengaktifkan status bencana.');
+        if (!session()->get('is_logged_in')) {
+            return redirect()->to('/login')->with('error', 'Akses ditolak.');
         }
 
         $landModel = new LandModel();
@@ -199,14 +203,15 @@ class Disaster extends BaseController
 
     public function activateSubmit($id)
     {
-        if (!session()->get('is_logged_in') || session()->get('role') === 'petani') {
+        if (!session()->get('is_logged_in')) {
             return redirect()->to('/login')->with('error', 'Akses ditolak.');
         }
 
         if ($this->request->getMethod() === 'POST') {
             $rules = [
+                'jenis_bencana'     => 'required',
                 'deskripsi_bencana' => 'required|min_length[10]|max_length[500]',
-                'foto_bencana'      => 'uploaded[foto_bencana]|max_size[foto_bencana,2048]|is_image[foto_bencana]'
+                'foto_bencana'      => 'permit_empty|max_size[foto_bencana,2048]|is_image[foto_bencana]'
             ];
 
             if (!$this->validate($rules)) {
@@ -245,35 +250,112 @@ class Disaster extends BaseController
                 $foto->move(WRITEPATH . 'uploads', $fotoName);
             }
 
+            $jenisBencana = $this->request->getPost('jenis_bencana');
+            $deskripsiBencana = "[$jenisBencana] " . $this->request->getPost('deskripsi_bencana');
+
+            $mitigasi = "";
+            switch ($jenisBencana) {
+                case 'Banjir':
+                    $mitigasi = "1. Segera buat saluran pembuangan air (drainase) darurat.\n2. Amankan peralatan pertanian dan kelistrikan.\n3. Hindari aplikasi pupuk kimia hingga genangan surut.";
+                    break;
+                case 'Kekeringan':
+                    $mitigasi = "1. Lakukan pengairan bergilir jika ada sumber air terdekat.\n2. Gunakan mulsa untuk menjaga kelembapan tanah.\n3. Tunda pemupukan untuk mencegah tanaman keracunan.";
+                    break;
+                case 'Hama Wereng':
+                    $mitigasi = "1. Lakukan penyemprotan insektisida sistemik yang disarankan PPL.\n2. Kurangi volume air genangan di lahan sawah.\n3. Gunakan varietas tahan wereng untuk musim tanam berikutnya.";
+                    break;
+                case 'Hama Tikus':
+                    $mitigasi = "1. Segera lakukan gropyokan massal bersama kelompok tani.\n2. Bersihkan gulma di pematang yang jadi sarang tikus.\n3. Aplikasikan umpan beracun sesuai instruksi PPL.";
+                    break;
+                case 'Penyakit Jamur':
+                    $mitigasi = "1. Segera hentikan pemupukan unsur Nitrogen (Urea).\n2. Lakukan penyemprotan fungisida secara merata.\n3. Kurangi kelembapan dengan menjarangkan jarak tanam jika memungkinkan.";
+                    break;
+                case 'Angin Puting Beliung':
+                    $mitigasi = "1. Hindari area lahan sampai cuaca benar-benar aman.\n2. Bersihkan puing-puing dan dahan roboh dengan hati-hati.\n3. Dirikan kembali tanaman yang rebah secara perlahan jika memungkinkan.";
+                    break;
+                default:
+                    $mitigasi = "1. Hentikan sementara aktivitas rutin di lahan terdampak.\n2. Amankan hasil panen/peralatan yang masih bisa diselamatkan.\n3. Segera koordinasi dengan PPL untuk langkah teknis spesifik.";
+                    break;
+            }
+
             $updated = $landModel->setDisasterStatus(
                 $id,
                 'darurat',
-                $this->request->getPost('deskripsi_bencana'),
+                $deskripsiBencana,
                 $fotoName
             );
 
             if ($updated) {
-                // Auto-notify all farmers in the group immediately
                 $notifModel = new NotificationModel();
                 $userModel  = new UserModel();
+                $msgModel   = new MessageModel();
 
                 $farmers = $userModel
                     ->where('role', 'petani')
                     ->where('id_kelompok', $land['id_kelompok'])
                     ->findAll();
+                
+                $groupModel = new \App\Models\FarmerGroupModel();
+                $group = $groupModel->find($land['id_kelompok']);
+                $pplId = $group ? $group['id_ppl'] : null;
 
+                $senderId = session()->get('id_user');
+                $senderNama = session()->get('nama');
+                
+                $pesanDarurat = "[ SIAGA BENCANA ] — Laporan Darurat\n"
+                    . "================================\n"
+                    . " LOKASI   : {$land['nama_lahan']}\n"
+                    . " WAKTU    : " . date('d/m/Y H:i') . "\n"
+                    . " KEJADIAN : {$deskripsiBencana}\n"
+                    . "================================\n"
+                    . " LANGKAH MITIGASI AWAL:\n"
+                    . "{$mitigasi}\n"
+                    . "================================\n"
+                    . "Dilaporkan oleh: {$senderNama}.";
+                
+                if ($fotoName) {
+                    $pesanDarurat .= "\n\n[FOTO_BENCANA:" . $fotoName . "]";
+                }
+
+                $penerimaIds = [];
                 foreach ($farmers as $farmer) {
+                    if ($farmer['id_user'] != $senderId) {
+                        $penerimaIds[] = $farmer['id_user'];
+                    }
+                }
+                if ($pplId && $pplId != $senderId) {
+                    $penerimaIds[] = $pplId;
+                }
+
+                foreach ($penerimaIds as $idPenerima) {
+                    // Send Direct Message
+                    $msgModel->insert([
+                        'id_pengirim' => $senderId,
+                        'id_penerima' => $idPenerima,
+                        'isi_pesan'   => $pesanDarurat,
+                        'is_read'     => 0,
+                    ]);
+
+                    // Send Notification
                     $notifModel->createNotification(
-                        $farmer['id_user'],
-                        '[DARURAT] Bencana Baru: ' . $land['nama_lahan'],
-                        'Lahan ' . $land['nama_lahan'] . ' kini berstatus DARURAT BENCANA. Pantau instruksi mitigasi dari PPL Anda segera.',
+                        $idPenerima,
+                        '[DARURAT] Bencana: ' . $land['nama_lahan'],
+                        "Lahan " . $land['nama_lahan'] . " dilaporkan mengalami bencana. Cek pesan masuk Anda untuk instruksi mitigasi awal.",
                         'danger'
                     );
                 }
 
+                // Notify the sender (reporter) too
+                $notifModel->createNotification(
+                    $senderId,
+                    'Laporan Darurat Terkirim',
+                    "Laporan darurat untuk lahan " . $land['nama_lahan'] . " berhasil disiarkan ke kelompok tani dan PPL.",
+                    'success'
+                );
+
                 log_message('info', 'Disaster activated for land ' . $id . ' by ' . session()->get('nama'));
                 return redirect()->to('/disaster')
-                    ->with('success', 'Status bencana berhasil diaktifkan untuk lahan ' . $land['nama_lahan']);
+                    ->with('success', 'Status bencana diaktifkan. Peringatan dan instruksi mitigasi telah disebarkan ke kelompok Anda dan PPL.');
             }
 
             return redirect()->back()->withInput()->with('error', 'Gagal mengaktifkan status bencana.');
@@ -366,8 +448,8 @@ class Disaster extends BaseController
 
     public function deactivate($id)
     {
-        if (!session()->get('is_logged_in') || session()->get('role') === 'petani') {
-            return redirect()->to('/login')->with('error', 'Akses ditolak. Hanya PPL dan Admin yang bisa menyelesaikan status bencana.');
+        if (!session()->get('is_logged_in')) {
+            return redirect()->to('/login')->with('error', 'Akses ditolak.');
         }
 
         $landModel = new LandModel();
@@ -413,7 +495,8 @@ class Disaster extends BaseController
             // Record as activity history
             $activityModel = new \App\Models\ActivityModel();
             $tanggalSelesai = date('d M Y');
-            $activityModel->insert([
+            
+            $activityData = [
                 'id_lahan' => $id,
                 'id_user' => $land['id_user'] ?? session()->get('id_user'),
                 'jenis_aktivitas' => 'Riwayat Bencana',
@@ -421,7 +504,24 @@ class Disaster extends BaseController
                 'deskripsi' => "Telah terjadi bencana dengan detail: {$deskripsiBencana}\nMasa darurat: {$tanggalMulai} s/d {$tanggalSelesai}",
                 'status' => 'approved',
                 'foto' => $fotoBencana
-            ]);
+            ];
+
+            $activityModel->insert($activityData);
+            $insertedId = $activityModel->getInsertID();
+
+            if ($insertedId) {
+                // Ensure coordinate is always populated by extracting the geometric centroid of the land.
+                // We strip the SRID to 0 to bypass MySQL 8's lack of ST_Centroid support for geographic maps (4326),
+                // calculate the pure Cartesian center, and then wrap it back into its original SRID.
+                $db = \Config\Database::connect();
+                $centroidSql = "UPDATE activities 
+                                SET koordinat = (
+                                    SELECT ST_SRID(ST_Centroid(ST_SRID(geom, 0)), ST_SRID(geom)) 
+                                    FROM lands WHERE id_lahan = ?
+                                ) 
+                                WHERE id_aktivitas = ?";
+                $db->query($centroidSql, [$id, $insertedId]);
+            }
 
             // Notify farmers the disaster is resolved
             $notifModel = new NotificationModel();

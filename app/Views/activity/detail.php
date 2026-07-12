@@ -56,19 +56,19 @@
 
 <!-- Hero Header -->
 <div class="detail-hero">
-    <div class="d-flex justify-content-between align-items-start">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start gap-4">
         <div>
             <div style="font-size:11px; font-weight:800; opacity:0.6; letter-spacing:1px; text-transform:uppercase; margin-bottom:8px;">
                 Detail Aktivitas · #<?= $activity['id_aktivitas'] ?>
             </div>
-            <h2 class="fw-800 mb-2" style="font-size:28px;"><?= esc(ucwords($activity['jenis_aktivitas'])) ?></h2>
-            <div class="d-flex align-items-center gap-3 mt-2 opacity-80 small fw-700">
+            <h2 class="fw-800 mb-2" style="font-size:28px; word-break: break-word;"><?= esc(ucwords($activity['jenis_aktivitas'])) ?></h2>
+            <div class="d-flex flex-wrap align-items-center gap-3 mt-2 opacity-80 small fw-700">
                 <span><i class="far fa-calendar me-1"></i><?= date('d F Y', strtotime($activity['tanggal'])) ?></span>
-                <span>·</span>
+                <span class="d-none d-sm-inline">·</span>
                 <span><i class="fas fa-map-marked-alt me-1"></i><?= esc($land['nama_lahan'] ?? 'N/A') ?></span>
             </div>
         </div>
-        <div class="d-flex flex-column align-items-end gap-3">
+        <div class="d-flex flex-row flex-md-column align-items-center align-items-md-end flex-wrap gap-2 gap-md-3">
             <?php if ($activity['status'] === 'approved'): ?>
                 <span class="status-pill status-approved"><i class="fas fa-check-circle"></i> Disetujui</span>
             <?php elseif ($activity['status'] === 'rejected'): ?>

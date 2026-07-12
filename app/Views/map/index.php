@@ -129,11 +129,13 @@
     .btn-new-analysis {
         background: #1e3a1f; color: white; border: none; padding: 10px 20px;
         border-radius: 50px; font-weight: 700; font-size: 13px; display: flex; align-items: center; gap: 8px;
+        white-space: nowrap; flex-shrink: 0;
     }
 
     .btn-buffer {
         background: #fee2e2; color: #991b1b; border: none; padding: 10px 18px;
         border-radius: 50px; font-weight: 700; font-size: 13px; display: flex; align-items: center; gap: 8px;
+        white-space: nowrap; flex-shrink: 0;
     }
     
     .btn-buffer.active { background: #fecaca; }
@@ -141,7 +143,7 @@
     .action-circle-btn {
         width: 40px; height: 40px; border-radius: 50%; border: none; background: transparent;
         color: #475569; display: flex; align-items: center; justify-content: center;
-        font-size: 18px; transition: all 0.2s;
+        font-size: 18px; transition: all 0.2s; flex-shrink: 0;
     }
 
     .zoom-controls { position: absolute; bottom: 120px; right: 20px; display: flex; flex-direction: column; gap: 8px; z-index: 999; }
@@ -272,15 +274,42 @@
 
     /* Responsive Adjustments for Map View */
     @media (max-width: 991px) {
-        .map-full-wrapper { height: calc(100vh - 200px); border-radius: 16px; margin-bottom: 20px; }
-        .left-panels-container { top: 10px; left: 10px; width: 220px; max-height: calc(100% - 150px); }
+        .map-full-wrapper { height: calc(100vh - 120px); border-radius: 16px; margin-bottom: 20px; }
+        
+        .left-panels-container { 
+            top: 10px; left: 55px; width: 220px; 
+            max-height: calc(100% - 100px); 
+            overflow-y: auto; 
+            pointer-events: auto;
+            scrollbar-width: thin;
+            display: none; /* Hide by default on mobile to prevent blocking map */
+        }
+        .left-panels-container.active-mobile {
+            display: flex; /* Show when toggled */
+            animation: slideInRight 0.3s ease;
+        }
+        .left-panels-container::-webkit-scrollbar { display: block; width: 4px; }
+        .left-panels-container::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.2); border-radius: 4px; }
+        
+        /* Shrink map panels heavily to prevent clipping */
+        .floating-card { padding: 12px !important; }
+        .panel-title { margin-bottom: 10px !important; font-size: 9px !important; }
+        .layer-item { padding: 8px 12px !important; margin-bottom: 6px !important; }
+        .layer-name { font-size: 11px !important; }
+        .legend-item { margin-bottom: 6px !important; }
+        .legend-text { font-size: 10px !important; }
 
         .detail-card { width: calc(100% - 20px); right: 10px; top: 10px; max-height: 80vh; overflow-y: auto; }
         .add-land-card { width: calc(100% - 20px); right: 10px; top: 10px; }
         .land-list-card { width: calc(100% - 20px); left: 10px; top: 10px; }
         #search-results-dropdown { left: 10px; width: calc(100% - 20px); top: 50px; }
-        .action-bar-center { width: calc(100% - 20px); bottom: 60px; overflow-x: auto; justify-content: flex-start; padding: 10px; border-radius: 20px; scrollbar-width: none; }
-        .action-bar-center::-webkit-scrollbar { display: none; }
+        .action-bar-center { 
+            width: calc(100% - 20px); bottom: 10px; 
+            flex-wrap: wrap; 
+            justify-content: center; padding: 10px 15px; border-radius: 20px; 
+            background: rgba(255, 255, 255, 0.95);
+            gap: 10px;
+        }
         .zoom-controls { bottom: 130px; right: 10px; }
         .table-section-premium { padding: 20px; margin-top: 20px; margin-bottom: 20px; border-radius: 20px; }
         .table-section-premium .d-flex.justify-content-between { flex-direction: column; align-items: flex-start !important; gap: 15px; }
@@ -490,7 +519,7 @@
             <div class="floating-card">
                 <span class="panel-title">Lapisan Peta Tematik</span>
                 <div class="layer-item active"><div class="layer-label-box"><i class="fas fa-calendar-day layer-icon"></i><span class="layer-name">Fase Lahan</span></div><div class="radio-circle"></div></div>
-                <div class="layer-item"><div class="layer-label-box"><i class="fas fa-fire layer-icon text-danger"></i><span class="layer-name">Produktivitas (Heatmap)</span></div><div class="radio-circle"></div></div>
+                <div class="layer-item"><div class="layer-label-box"><i class="fas fa-bug layer-icon text-danger"></i><span class="layer-name">Kerawanan Hama (Heatmap)</span></div><div class="radio-circle"></div></div>
             </div>
 
 
@@ -545,12 +574,28 @@
         <!-- Floating Add Land Form -->
         <div class="floating-panel detail-card add-land-card" id="addLandCard">
             <div class="detail-head" style="background: #166534; padding: 12px 20px;">
-                <div><span class="x-small fw-800 opacity-60">Pendaftaran</span><h5 class="fw-800 mb-0" style="font-size: 15px;">Tambah Lahan Baru</h5></div>
+                <div><span class="x-small fw-800 opacity-60" id="form-land-subtitle">Pendaftaran</span><h5 class="fw-800 mb-0" id="form-land-title" style="font-size: 15px;">Tambah Lahan Baru</h5></div>
                 <i class="fas fa-times cursor-pointer opacity-50" onclick="hideAddLand()"></i>
             </div>
             <div class="detail-content" style="padding: 15px 20px;">
-                <form action="<?= base_url('farmer-groups/store-land') ?>" method="post">
+                <form id="form-land" action="<?= base_url('farmer-groups/store-land') ?>" method="post">
+                    <input type="hidden" name="id_lahan" id="form-id-lahan" value="">
                     <?= csrf_field() ?>
+                    <?php if (session()->get('role') === 'petani'): ?>
+                    <div class="mb-2">
+                        <span class="form-label-premium" style="margin-bottom: 4px;">Kelompok Tani</span>
+                        <input type="hidden" name="id_kelompok" id="form-group-id" value="<?= session()->get('id_kelompok') ?>">
+                        <?php
+                            $myGroup = null;
+                            if(isset($groups)) {
+                                foreach($groups as $g) {
+                                    if ($g['id_kelompok'] == session()->get('id_kelompok')) { $myGroup = $g; break; }
+                                }
+                            }
+                        ?>
+                        <input type="text" class="input-premium bg-light" readonly value="<?= esc($myGroup['nama_kelompok'] ?? 'Kelompok Saya') ?>" style="padding: 8px 12px; font-size: 12px;">
+                    </div>
+                    <?php else: ?>
                     <div class="mb-2">
                         <span class="form-label-premium" style="margin-bottom: 4px;">Pilih Kelompok Tani</span>
                         <select name="id_kelompok" id="form-group-id" class="input-premium" required style="appearance: auto; padding: 8px 12px; font-size: 12px;">
@@ -558,19 +603,20 @@
                             <?php if(isset($groups)): ?>
                                 <?php foreach($groups as $g): ?>
                                     <option value="<?= $g['id_kelompok'] ?>" <?= (session()->get('id_kelompok') == $g['id_kelompok']) ? 'selected' : '' ?>><?= esc($g['nama_kelompok']) ?></option>
-                                 <?php endforeach; ?>
+                                <?php endforeach; ?>
                             <?php endif; ?>
                         </select>
                     </div>
+                    <?php endif; ?>
 
                     <div class="mb-2">
                         <span class="form-label-premium" style="margin-bottom: 4px;">Nama Lahan</span>
-                        <input type="text" name="nama_lahan" class="input-premium" required placeholder="Contoh: Sawah Blok B" style="padding: 8px 12px; font-size: 12px;">
+                        <input type="text" name="nama_lahan" id="form-nama-lahan" class="input-premium" required placeholder="Contoh: Sawah Blok B" style="padding: 8px 12px; font-size: 12px;">
                     </div>
 
                     <div class="mb-2">
                         <span class="form-label-premium" style="margin-bottom: 4px;">Komoditas</span>
-                        <select name="komoditas" class="input-premium" required style="appearance: auto; padding: 8px 12px; font-size: 12px;">
+                        <select name="komoditas" id="form-komoditas" class="input-premium" required style="appearance: auto; padding: 8px 12px; font-size: 12px;">
                             <option value="">-- Pilih Komoditas --</option>
                             <option value="padi">Padi</option>
                             <option value="jagung">Jagung</option>
@@ -579,7 +625,7 @@
 
                     <div class="mb-2">
                         <span class="form-label-premium" style="margin-bottom: 4px;">Alamat / Detail Lokasi</span>
-                        <input type="text" name="alamat" class="input-premium" required placeholder="Lokasi spesifik" style="padding: 8px 12px; font-size: 12px;">
+                        <input type="text" name="alamat" id="form-alamat" class="input-premium" required placeholder="Lokasi spesifik" style="padding: 8px 12px; font-size: 12px;">
                     </div>
 
                     <div class="row g-2 mb-2">
@@ -606,7 +652,7 @@
 
                     <input type="hidden" name="id_user" value="<?= session()->get('id_user') ?>">
                     <input type="hidden" name="geojson" id="map-geojson">
-                    <button type="submit" class="btn-brown-detail shadow-sm w-100" style="background: #166534; margin-top: 5px; padding: 10px; font-size: 13px;">Simpan Data Lahan</button>
+                    <button type="submit" id="btn-form-submit" class="btn-brown-detail shadow-sm w-100" style="background: #166534; margin-top: 5px; padding: 10px; font-size: 13px;">Simpan Data Lahan</button>
                 </form>
             </div>
         </div>
@@ -635,8 +681,8 @@
 
         <div class="action-bar-center">
             <?php if (session()->get('role') !== 'petani'): ?>
-                <button class="btn-new-analysis shadow-lg" onclick="event.stopPropagation(); showAddLand()"><i class="fas fa-plus-circle"></i> Tambah Lahan Baru</button>
-                <div class="vr opacity-10 mx-1" style="height: 24px;"></div>
+            <button class="btn-new-analysis shadow-lg" onclick="event.stopPropagation(); showAddLand(event)"><i class="fas fa-plus-circle"></i> Tambah Lahan Baru</button>
+            <div class="vr opacity-10 mx-1" style="height: 24px;"></div>
             <?php endif; ?>
             <button class="btn-buffer" id="btnBuffer" onclick="event.stopPropagation(); toggleBuffer()"><i class="fas fa-bullseye"></i> Buffer</button>
             <div class="vr opacity-10 mx-1" style="height: 24px;"></div>
@@ -651,10 +697,8 @@
             <button class="zoom-btn" onclick="locateUser()"><i class="fas fa-crosshairs"></i></button>
         </div>
 
-        <div class="mockup-footer">
-            <div>AGRIMAPGIS • HIGH-FIDELITY MOCKUP • V2.4</div>
-            <div>RAJABASA, LAMPUNG SELATAN • SATELIT: SENTINEL-2 L2A</div>
-            <div>MODERN AGRICULTURE • GREEN / EARTH / GOLD</div>
+        <div class="mt-4 pb-2 text-center opacity-50 small fw-bold" style="color: white; z-index: 1000; position: relative;">
+            &copy; <?= date('Y') ?> AgriMapGIS. Hak Cipta Dilindungi.
         </div>
     </div>
 
@@ -827,13 +871,25 @@
         const mapLng = document.getElementById('map-lng');
         const mapGeojson = document.getElementById('map-geojson');
 
+        let manualMarker = null;
+
         function updateManualGeojson() {
             const lat = parseFloat(mapLat.value);
             const lng = parseFloat(mapLng.value);
-            if (!isNaN(lat) && !isNaN(lng)) {
+            if (!isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0) {
                 // Only overwrite geojson if it's empty or NOT a polygon
                 if (!mapGeojson.value || !mapGeojson.value.includes('Polygon')) {
                     mapGeojson.value = JSON.stringify({"type": "Point", "coordinates": [lng, lat]});
+                }
+                
+                // Automatically move map to the coordinate
+                map.setView([lat, lng], 18);
+                
+                // Update or create a marker to show the location
+                if (manualMarker) {
+                    manualMarker.setLatLng([lat, lng]);
+                } else {
+                    manualMarker = L.marker([lat, lng]).addTo(map).bindPopup("Titik Koordinat Manual").openPopup();
                 }
             }
         }
@@ -899,29 +955,45 @@
         }
     });
 
-    function showAddLand(groupId = null) {
-        if (event) event.stopPropagation();
+    function showAddLand(evtOrGroupId = null) {
+        // Prevent event bubbling if first arg is an event object
+        if (evtOrGroupId && typeof evtOrGroupId === 'object' && evtOrGroupId.stopPropagation) {
+            evtOrGroupId.stopPropagation();
+            evtOrGroupId = null; // reset so no groupId override
+        }
+        
+        const groupId = evtOrGroupId; // will be a string groupId if passed from URL, null otherwise
         
         const card = document.getElementById('addLandCard');
         card.classList.add('active');
         
-        if (groupId) {
-            document.getElementById('form-group-id').value = groupId;
+        // Only override group select if a specific groupId is provided AND role is not petani
+        // (for petani, the group is fixed via hidden input)
+        const groupInput = document.getElementById('form-group-id');
+        if (groupId && groupInput && groupInput.tagName === 'SELECT') {
+            groupInput.value = groupId;
         }
         
         document.getElementById('landCard').style.display = 'none';
         
-        map.pm.enableDraw('Polygon', {
-            snappable: true,
-            snapDistance: 20,
-        });
+        // Enable Geoman polygon drawing
+        if (map && map.pm) {
+            map.pm.enableDraw('Polygon', {
+                snappable: true,
+                snapDistance: 20,
+            });
+        }
         
-        alert("Mode Menggambar Poligon Aktif: Silakan klik di peta untuk menggambar batas-batas lahan. Klik pada titik pertama untuk menutup area.");
+        // Small timeout to let alert appear after draw mode is active
+        setTimeout(() => {
+            alert("Mode Menggambar Poligon Aktif.\n\nKlik pada peta untuk menentukan titik-titik batas lahan Anda. Klik pada titik pertama untuk menutup area dan menyelesaikan gambar.");
+        }, 100);
     }
 
     function hideAddLand() {
         document.getElementById('addLandCard').classList.remove('active');
         if (map.pm) map.pm.disableDraw();
+        resetFormToAddMode();
         // Clear URL params without refresh
         window.history.replaceState({}, document.title, window.location.pathname);
     }
@@ -943,13 +1015,24 @@
             .then(res => res.json())
             .then(data => {
                 if (currentMode === 'heatmap') {
-                    const heatData = data.features.map(f => {
-                        // Get center of polygon for heatmap point
-                        const center = L.geoJSON(f).getBounds().getCenter();
-                        const intensity = (f.properties.id_lahan % 10) / 10 + 0.5; // Mock intensity
-                        return [center.lat, center.lng, intensity];
-                    });
-                    heatmapLayer = L.heatLayer(heatData, { radius: 40, blur: 25, max: 1.0 }).addTo(map);
+                    // Fetch real heatmap data
+                    let heatUrl = '<?= base_url('map/api-heatmap') ?>?days=30&t=' + new Date().getTime();
+                    if (filterGroup && filterGroup.value) heatUrl += '&id_kelompok=' + filterGroup.value;
+                    
+                    fetch(heatUrl)
+                        .then(r => r.json())
+                        .then(pts => {
+                            if (pts.length > 0) {
+                                heatmapLayer = L.heatLayer(pts, { 
+                                    radius: 35, 
+                                    blur: 25, 
+                                    max: 10,
+                                    gradient: {0.2: 'blue', 0.4: 'lime', 0.6: 'yellow', 0.8: 'orange', 1.0: 'red'}
+                                }).addTo(map);
+                            } else {
+                                alert("Belum ada laporan hama dalam 30 hari terakhir.");
+                            }
+                        });
                 } else {
                     landLayer = L.geoJSON(data, {
                         style: styleFeature,
@@ -975,6 +1058,14 @@
                         }
                     }).addTo(map);
 
+                    // Auto-zoom to show all polygons
+                    try {
+                        const bounds = landLayer.getBounds();
+                        if (bounds.isValid()) {
+                            map.fitBounds(bounds, { padding: [40, 40] });
+                        }
+                    } catch(e) {}
+
                     // Add reference markers for each land if they have lat/lng
                     data.features.forEach(f => {
                         if (f.properties.latitude && f.properties.longitude) {
@@ -994,6 +1085,9 @@
                         }
                     });
                 }
+            })
+            .catch(err => {
+                console.error('[AgriMapGIS] Gagal memuat data peta:', err);
             });
     }
 
@@ -1051,7 +1145,7 @@
         document.getElementById('bp-name').innerText = p.nama_lahan;
         document.getElementById('bp-address').innerText = p.alamat || 'Rajabasa, Lampung Selatan';
         document.getElementById('bp-commodity').innerText = p.komoditas.charAt(0).toUpperCase() + p.komoditas.slice(1);
-        document.getElementById('bp-area').innerText = p.luas + ' Ha';
+        document.getElementById('bp-area').innerText = parseFloat(p.luas) + ' Ha';
         
         // Fase Logic
         const faseBadge = document.getElementById('bp-fase-badge');
@@ -1085,7 +1179,7 @@
         }
 
         // Update Card as well
-        document.getElementById('card-area').innerText = p.luas + ' Ha';
+        document.getElementById('card-area').innerText = parseFloat(p.luas) + ' Ha';
         document.getElementById('card-harvest').innerText = p.estimasi_panen ? new Date(p.estimasi_panen).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) : '--';
     }
 
@@ -1237,7 +1331,7 @@
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
                             <div class="fw-800 text-dark" style="font-size: 13px;">${p.nama_lahan}</div>
-                            <div class="text-muted" style="font-size: 11px;">${p.komoditas.toUpperCase()} • ${p.luas} Ha</div>
+                            <div class="text-muted" style="font-size: 11px;">${p.komoditas.toUpperCase()} • ${parseFloat(p.luas)} Ha</div>
                         </div>
                         <span class="badge rounded-pill" style="background: ${faseColor}20; color: ${faseColor}; font-size: 9px; font-weight: 800;">
                             ${p.status_fase.toUpperCase()}
@@ -1259,7 +1353,7 @@
                         <span class="badge bg-primary bg-opacity-10 text-primary px-3 rounded-pill d-print-none">${p.komoditas.toUpperCase()}</span>
                         <span class="d-none d-print-block">${p.komoditas.toUpperCase()}</span>
                     </td>
-                    <td>${p.luas} Ha</td>
+                    <td>${parseFloat(p.luas)} Ha</td>
                     <td>
                         <span class="badge rounded-pill d-print-none" style="background: ${faseColor}20; color: ${faseColor}; font-size: 10px;">
                             ${p.status_fase.toUpperCase()}
@@ -1372,7 +1466,7 @@
                         <div class="search-result-item" onclick="zoomToLand('${f.properties.id_lahan}')">
                             <div>
                                 <div class="name">${f.properties.nama_lahan}</div>
-                                <div class="sub">${f.properties.komoditas.toUpperCase()} • ${f.properties.luas} Ha</div>
+                                <div class="sub">${f.properties.komoditas.toUpperCase()} • ${parseFloat(f.properties.luas)} Ha</div>
                             </div>
                             <i class="fas fa-chevron-right text-muted opacity-30 small"></i>
                         </div>
@@ -1399,11 +1493,126 @@
         // initFarmerView(); // Removed auto-open list to prevent clutter
         populateLandList(); // Ensure table and lists are populated on load
         
+        // Fix for map tiles not fully loading on right side
+        if (typeof ResizeObserver !== 'undefined') {
+            new ResizeObserver(() => {
+                if (typeof map !== 'undefined') map.invalidateSize();
+            }).observe(document.getElementById('thematicMap'));
+        } else {
+            setTimeout(() => { if (typeof map !== 'undefined') map.invalidateSize(); }, 1000);
+        }
+        
         // Handle URL params if any
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.has('add_land') && urlParams.get('id_kelompok')) {
             showAddLand(urlParams.get('id_kelompok'));
         }
+        // Handle ?edit=ID param to load existing land for editing
+        if (urlParams.has('edit')) {
+            const editId = parseInt(urlParams.get('edit'));
+            if (editId > 0) {
+                activateEditMode(editId);
+            }
+        }
     });
+
+    // ─── EDIT MODE LOGIC ────────────────────────────────────────────────────
+    let editLayerRef = null; // hold the editable layer so we can clean up
+
+    async function activateEditMode(id_lahan) {
+        try {
+            // 1. Fetch GeoJSON for all lands to find our target
+            const resp = await fetch('<?= base_url('map/api-lands') ?>');
+            const fc   = await resp.json();
+
+            const feature = fc.features.find(f => f.properties.id_lahan == id_lahan);
+            if (!feature) {
+                alert('Data lahan tidak ditemukan pada peta. Pastikan lahan sudah memiliki poligon.');
+                return;
+            }
+
+            const props = feature.properties;
+
+            // 2. Draw the existing polygon on the map in edit-mode color
+            editLayerRef = L.geoJSON(feature.geometry, {
+                style: { color: '#f59e0b', weight: 3, fillOpacity: 0.3, fillColor: '#fcd34d' }
+            }).addTo(map);
+
+            // Enable editing on the layer via Leaflet-Geoman
+            editLayerRef.eachLayer(layer => {
+                layer.pm.enable({ allowSelfIntersection: false });
+                // Listen to edits and update the hidden GeoJSON field
+                layer.on('pm:edit', (ev) => {
+                    document.getElementById('map-geojson').value = JSON.stringify(ev.layer.toGeoJSON().geometry);
+                });
+                // Set initial GeoJSON
+                document.getElementById('map-geojson').value = JSON.stringify(layer.toGeoJSON().geometry);
+            });
+
+            // Fit map to the polygon
+            map.fitBounds(editLayerRef.getBounds(), { padding: [60, 60] });
+
+            // 3. Show the Add/Edit form panel
+            const addCard = document.getElementById('addLandCard');
+            addCard.classList.add('active');
+
+            // 4. Switch form to EDIT mode
+            const form = document.getElementById('form-land');
+            form.action = '<?= base_url('farmer-groups/update-land') ?>';
+
+            document.getElementById('form-id-lahan').value = id_lahan;
+            document.getElementById('form-land-subtitle').textContent = 'Edit Data Lahan';
+            document.getElementById('form-land-title').textContent = '✏️ Perbarui Data Lahan';
+            document.getElementById('btn-form-submit').textContent = '💾 Simpan Perubahan';
+            document.getElementById('btn-form-submit').style.background = '#b45309'; // amber color
+
+            // 5. Pre-fill form fields
+            document.getElementById('form-nama-lahan').value = props.nama_lahan || '';
+            document.getElementById('form-komoditas').value  = props.komoditas  || '';
+            document.getElementById('form-alamat').value     = props.alamat     || '';
+            document.getElementById('map-luas').value        = props.luas       || '';
+
+            // Set group select
+            const groupSelect = document.getElementById('form-group-id');
+            if (groupSelect && groupSelect.tagName === 'SELECT') {
+                groupSelect.value = props.id_kelompok || '';
+            }
+
+        } catch(err) {
+            console.error('Edit mode error:', err);
+            alert('Gagal memuat data lahan untuk diedit: ' + err.message);
+        }
+    }
+
+    function resetFormToAddMode() {
+        const form = document.getElementById('form-land');
+        if (!form) return;
+
+        form.action = '<?= base_url('farmer-groups/store-land') ?>';
+        document.getElementById('form-id-lahan').value = '';
+        document.getElementById('form-land-subtitle').textContent = 'Pendaftaran';
+        document.getElementById('form-land-title').textContent = 'Tambah Lahan Baru';
+        document.getElementById('btn-form-submit').textContent = 'Simpan Data Lahan';
+        document.getElementById('btn-form-submit').style.background = '#166534';
+
+        // Remove editable layer if in edit mode
+        if (editLayerRef) {
+            map.removeLayer(editLayerRef);
+            editLayerRef = null;
+        }
+
+        // Clear form inputs
+        ['form-nama-lahan','form-komoditas','form-alamat','map-luas','map-geojson','map-lat','map-lng','form-id-lahan'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.value = '';
+        });
+    }
+
+    function toggleLeftPanels() {
+        const panels = document.querySelector('.left-panels-container');
+        if (panels) {
+            panels.classList.toggle('active-mobile');
+        }
+    }
 </script>
 <?= $this->endSection() ?>

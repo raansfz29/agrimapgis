@@ -59,6 +59,39 @@
         border-bottom-left-radius: 4px;
         border: 1px solid #e2e8f0;
     }
+    
+    @media (max-width: 991px) {
+        .chat-col {
+            display: none; /* Hide chat column completely on mobile until active */
+        }
+        .chat-col.active-mobile {
+            display: block;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 9999;
+            padding: 0 !important;
+            background: white;
+            animation: slideInRight 0.3s ease forwards;
+        }
+        .chat-col.active-mobile .chat-panel {
+            height: 100% !important;
+            min-height: 100% !important;
+            border-radius: 0 !important;
+            border: none !important;
+            display: flex;
+            flex-direction: column;
+        }
+    }
+    
+    @keyframes slideInRight {
+        from { transform: translateX(100%); }
+        to { transform: translateX(0); }
+    }
     .msg-time {
         display: block;
         font-size: 10px;
@@ -105,7 +138,7 @@
     <div class="col-md-4">
         <div class="premium-card p-0 overflow-hidden" style="height: calc(100vh - 200px); min-height: 500px; display: flex; flex-direction: column;">
             <div class="p-4 border-bottom">
-                <h6 class="fw-800 mb-0">Kontak Binaan</h6>
+                <h6 class="fw-800 mb-0">Kontak</h6>
             </div>
             <div class="contact-list-panel p-3">
                 <?php if (empty($contacts)): ?>
@@ -124,7 +157,11 @@
                             </div>
                             <div class="flex-grow-1">
                                 <h6 class="fw-bold mb-0" style="font-size: 14px;"><?= esc($contact['nama']) ?></h6>
-                                <span class="text-muted small"><?= esc(ucfirst($contact['role'])) ?></span>
+                                <?php if (!empty($contact['nama_kelompok'])): ?>
+                                    <span class="text-success fw-700" style="font-size: 11px;"><i class="fas fa-users me-1 opacity-75"></i><?= esc($contact['nama_kelompok']) ?></span>
+                                <?php else: ?>
+                                    <span class="text-muted small"><?= esc(ucfirst($contact['role'])) ?></span>
+                                <?php endif; ?>
                             </div>
                             <i class="fas fa-chevron-right text-muted small"></i>
                         </div>
@@ -135,7 +172,7 @@
     </div>
 
     <!-- Panel Chat -->
-    <div class="col-md-8">
+    <div class="col-md-8 chat-col" id="chatCol">
         <div class="chat-panel shadow-sm" id="chatPanel">
 
             <!-- Empty State -->
@@ -154,11 +191,14 @@
             <!-- Chat UI (hidden until contact selected) -->
             <div id="chatUI" style="display:none; flex-direction:column; height:100%;">
                 <!-- Header -->
-                <div class="chat-header p-3 px-4 border-bottom bg-white d-flex align-items-center gap-3">
-                    <div class="bg-primary bg-opacity-10 text-primary fw-800 rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;" id="chatAvatar">?</div>
-                    <div>
-                        <h6 class="fw-800 mb-0" id="chatName">-</h6>
-                        <span class="text-success small fw-bold"><i class="fas fa-circle me-1" style="font-size: 8px;"></i>Online</span>
+                <div class="chat-header p-3 px-4 border-bottom bg-white d-flex align-items-center gap-3 flex-shrink-0">
+                    <button class="btn btn-light rounded-circle d-md-none me-1 flex-shrink-0 d-flex align-items-center justify-content-center p-0" onclick="closeChatMobile()" style="width: 40px; height: 40px;">
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                    <div class="bg-primary bg-opacity-10 text-primary fw-800 rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style="width: 40px; height: 40px;" id="chatAvatar">?</div>
+                    <div class="flex-grow-1 text-truncate">
+                        <h6 class="fw-800 mb-1 text-truncate" id="chatName">-</h6>
+                        <span class="text-success small fw-bold d-flex align-items-center"><i class="fas fa-circle me-1" style="font-size: 8px;"></i>Online</span>
                     </div>
                 </div>
 
@@ -166,12 +206,12 @@
                 <div class="chat-messages-panel" id="chatBox"></div>
 
                 <!-- Input -->
-                <div class="p-3 px-4 border-top bg-white">
-                    <form id="chatForm" class="d-flex gap-2">
+                <div class="p-3 px-4 border-top bg-white flex-shrink-0 mb-safe">
+                    <form id="chatForm" class="d-flex gap-2 align-items-center m-0">
                         <?= csrf_field() ?>
                         <input type="hidden" id="targetId" value="">
-                        <input type="text" id="messageInput" class="form-control border-0 bg-light rounded-pill px-4" placeholder="Ketik pesan konsultasi di sini..." autocomplete="off">
-                        <button type="submit" class="btn btn-success rounded-circle" style="width: 45px; height: 45px;"><i class="fas fa-paper-plane"></i></button>
+                        <input type="text" id="messageInput" class="form-control border-0 bg-light rounded-pill px-4" style="height: 45px;" placeholder="Ketik pesan..." autocomplete="off">
+                        <button type="submit" class="btn btn-success rounded-circle flex-shrink-0 d-flex align-items-center justify-content-center p-0" style="width: 45px; height: 45px;"><i class="fas fa-paper-plane"></i></button>
                     </form>
                 </div>
             </div>
@@ -204,6 +244,9 @@
         const clickedItem = document.querySelector(`.contact-item[data-id="${userId}"]`);
         if (clickedItem) clickedItem.classList.add('active');
 
+        // Show chat column on mobile
+        document.getElementById('chatCol').classList.add('active-mobile');
+
         document.getElementById('chatEmptyState').style.display = 'none';
         document.getElementById('chatUI').style.display = 'none';
         document.getElementById('chat-loading').style.display = 'flex';
@@ -219,6 +262,13 @@
         refreshInterval = setInterval(() => {
             if (currentTargetId) fetchMessages(currentTargetId, false);
         }, 5000);
+    }
+    
+    function closeChatMobile() {
+        document.getElementById('chatCol').classList.remove('active-mobile');
+        document.querySelectorAll('.contact-item').forEach(el => el.classList.remove('active'));
+        currentTargetId = null;
+        if (refreshInterval) clearInterval(refreshInterval);
     }
 
     function fetchMessages(userId, initialLoad) {
@@ -238,9 +288,13 @@
                         let cls = isSent ? 'msg-sent' : 'msg-received';
                         if (isDisaster) cls += isSent ? ' msg-disaster-sent' : ' msg-disaster-received';
                         const time = msg.created_at ? msg.created_at.substr(11, 5) : '';
-                        const text = msg.isi_pesan
+                        let text = msg.isi_pesan
                             .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
                             .replace(/\n/g,'<br>');
+                            
+                        // Render disaster photo if tag exists
+                        text = text.replace(/\[FOTO_BENCANA:(.*?)\]/g, '<div class="mt-2 text-center"><img src="<?= base_url('uploads/') ?>$1" style="max-width: 100%; border-radius: 8px; border: 1px solid rgba(0,0,0,0.1); cursor: pointer;" alt="Foto Bencana" onclick="window.open(this.src)"></div>');
+                        
                         html += `<div class="msg-bubble ${cls}">${text}<span class="msg-time">${time}</span></div>`;
                     });
                 }

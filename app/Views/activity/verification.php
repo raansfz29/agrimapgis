@@ -155,20 +155,42 @@
 
     <form method="GET" action="<?= base_url('activity/verification') ?>" class="filter-card">
         <div class="row g-4">
-            <div class="col-md-4">
-                <span class="filter-label">Rentang Tanggal</span>
-                <input type="date" name="date" class="form-control bg-light border-0 py-2 fw-bold" value="<?= esc(service('request')->getGet('date') ?? '') ?>" onchange="this.form.submit()">
+            <div class="col-md-3">
+                <span class="filter-label">Bulan Aktivitas</span>
+                <input type="month" name="month" class="form-control bg-light border-0 py-2 fw-bold" value="<?= esc(service('request')->getGet('month') ?? '') ?>" onchange="this.form.submit()">
             </div>
-            <div class="col-md-4">
+            <?php if ($role === 'ppl' && !empty($managedGroups)): ?>
+            <div class="col-md-3">
+                <span class="filter-label">Kelompok Tani</span>
+                <select name="group" class="form-select bg-light border-0 py-2 fw-bold" onchange="this.form.submit()">
+                    <option value="">Semua Kelompok</option>
+                    <?php foreach($managedGroups as $g): ?>
+                        <option value="<?= $g['id_kelompok'] ?>" <?= isset($filterGroupId) && $filterGroupId == $g['id_kelompok'] ? 'selected' : '' ?>><?= esc($g['nama_kelompok']) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <?php else: ?>
+            <div class="col-md-3">
+                <span class="filter-label">Kelompok Tani</span>
+                <select class="form-select bg-light border-0 py-2 fw-bold" disabled>
+                    <option>Semua Kelompok</option>
+                </select>
+            </div>
+            <?php endif; ?>
+            <div class="col-md-3">
                 <span class="filter-label">Jenis Aktivitas</span>
                 <select name="type" class="form-select bg-light border-0 py-2 fw-bold" onchange="this.form.submit()">
                     <option value="">Semua Aktivitas</option>
+                    <option value="pengolahan_tanah" <?= service('request')->getGet('type') == 'pengolahan_tanah' ? 'selected' : '' ?>>Pengolahan Tanah</option>
                     <option value="penanaman" <?= service('request')->getGet('type') == 'penanaman' ? 'selected' : '' ?>>Penanaman</option>
-                    <option value="pemupukan" <?= service('request')->getGet('type') == 'pemupukan' ? 'selected' : '' ?>>Pemupukan</option>
+                    <option value="irigasi" <?= service('request')->getGet('type') == 'irigasi' ? 'selected' : '' ?>>Irigasi</option>
+                    <option value="pemupukan_npk" <?= service('request')->getGet('type') == 'pemupukan_npk' ? 'selected' : '' ?>>Pemupukan</option>
+                    <option value="penyemprotan_pestisida" <?= service('request')->getGet('type') == 'penyemprotan_pestisida' ? 'selected' : '' ?>>Penyemprotan</option>
+                    <option value="pemeliharaan" <?= service('request')->getGet('type') == 'pemeliharaan' ? 'selected' : '' ?>>Pemeliharaan</option>
                     <option value="panen" <?= service('request')->getGet('type') == 'panen' ? 'selected' : '' ?>>Panen</option>
                 </select>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <span class="filter-label">Status Verifikasi</span>
                 <select name="status" class="form-select bg-light border-0 py-2 fw-bold" onchange="this.form.submit()">
                     <option value="">Semua Status</option>
@@ -203,7 +225,7 @@
             <tbody>
                 <?php foreach ($activities as $act): ?>
                 <tr>
-                    <td class="text-center"><?= date('d/m/y', strtotime($act['created_at'])) ?></td>
+                    <td class="text-center"><?= date('d/m/y', strtotime($act['tanggal'])) ?></td>
                     <td>
                         <div class="fw-bold"><?= esc($act['nama_petani']) ?></div>
                         <div class="small text-muted" style="font-size: 8pt;">Klp: <?= esc($act['nama_lahan']) ?></div>

@@ -51,7 +51,7 @@ class Filters extends BaseFilters
      */
     public array $required = [
         'before' => [
-            'forcehttps', // Force Global Secure Requests
+            // 'forcehttps', // Disabled: causes redirect loops on local HTTP dev. Enable on production HTTPS host.
             'pagecache',  // Web Page Caching
         ],
         'after' => [
@@ -73,7 +73,11 @@ class Filters extends BaseFilters
     public array $globals = [
         'before' => [
             // 'honeypot',
-            'csrf',
+            'csrf' => ['except' => [
+                'activity/sync-offline',
+                'disaster/activate',
+                'disaster/deactivate',
+            ]],
             // 'invalidchars',
         ],
         'after' => [

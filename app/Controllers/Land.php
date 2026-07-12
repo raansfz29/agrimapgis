@@ -103,4 +103,54 @@ class Land extends BaseController
 
         return view('land/detail', $data);
     }
+
+    public function updateDetail($id)
+    {
+        if (!session()->get('is_logged_in')) {
+            return redirect()->to('/login');
+        }
+
+        $role = session()->get('role');
+        if ($role === 'petani') {
+            return redirect()->back()->with('error', 'Anda tidak memiliki akses untuk mengedit detail lahan.');
+        }
+
+        $nama   = $this->request->getPost('nama_lahan');
+        $komo   = $this->request->getPost('komoditas');
+        $alamat = $this->request->getPost('alamat');
+        $luas   = $this->request->getPost('luas');
+
+        if (empty($nama) || empty($komo)) {
+            return redirect()->back()->with('error', 'Nama lahan dan komoditas wajib diisi.');
+        }
+
+        // Use raw query to bypass any CI4 ORM primary key resolution issue
+        $db = \Config\Database::connect();
+        
+        $setClauses = ['nama_lahan = ?', 'komoditas = ?', 'alamat = ?'];
+        $params     = [$nama, $komo, $alamat];
+        
+        if (!empty($luas)) {
+            // Replace comma with dot to support Indonesian decimal format
+            $luas = str_replace(',', '.', $luas);
+            if ((float)$luas > 0) {
+                $setClauses[] = 'luas = ?';
+                $params[]     = (float)$luas;
+            }
+        }
+        
+        $params[] = (int)$id; // WHERE id_lahan = ?
+        
+        $sql = "UPDATE lands SET " . implode(', ', $setClauses) . " WHERE id_lahan = ?";
+        
+        $res      = $db->query($sql, $params);
+        $affected = $db->affectedRows();
+        
+        if ($res) {
+            return redirect()->to('/land/detail/' . $id)->with('success', 'Detail lahan berhasil diperbarui!');
+        } else {
+            $err = $db->error();
+            return redirect()->back()->with('error', 'Gagal memperbarui: ' . ($err['message'] ?? 'Unknown error'));
+        }
+    }
 }

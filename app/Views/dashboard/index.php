@@ -15,6 +15,21 @@
         box-shadow: 0 4px 12px rgba(0,0,0,0.2);
     }
     .custom-tooltip::before { border-top-color: rgba(15, 23, 42, 0.9); }
+    .map-container-dash { height: 500px; }
+    .map-legend-dash { width: 220px; }
+    @media (max-width: 991px) {
+        .map-container-dash { height: 280px !important; }
+        .map-legend-dash { width: auto; max-width: 160px; padding: 8px !important; margin: 8px !important; }
+        .map-legend-dash .panel-title { font-size: 8px !important; margin-bottom: 8px !important; }
+        .map-legend-dash span { font-size: 8px !important; }
+        .map-legend-dash div[style*="width: 12px"] { width: 8px !important; height: 8px !important; }
+        .kpi-cards-row .premium-card { padding: 12px !important; }
+        .kpi-cards-row .x-small { font-size: 9px !important; letter-spacing: 0 !important; }
+        .kpi-cards-row h3 { font-size: 1.25rem !important; }
+        .kpi-cards-row .gap-3 { gap: 8px !important; }
+        .kpi-cards-row .bg-opacity-10 { width: 32px !important; height: 32px !important; }
+        .kpi-cards-row .bg-opacity-10 i { font-size: 14px !important; }
+    }
 </style>
 <?= $this->endSection() ?>
 
@@ -84,7 +99,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <h6 class="fw-800 mb-1">${props.nama_lahan}</h6>
                                 <div class="d-flex justify-content-between x-small fw-700">
                                     <span class="text-muted">Luas:</span>
-                                    <span>${props.luas} Ha</span>
+                                    <span>${parseFloat(props.luas)} Ha</span>
                                 </div>
                                 <hr class="my-2 opacity-10">
                                 <a href="<?= base_url('land/detail') ?>/${props.id_lahan}" class="btn btn-dark btn-sm w-100 rounded-pill py-1 fw-800" style="font-size: 10px;">Detail Analisis</a>
@@ -108,15 +123,19 @@ document.addEventListener('DOMContentLoaded', function() {
                 }).addTo(plotLayer);
                 
                 if (data.features.length > 0) {
-                    map.fitBounds(geojson.getBounds(), { padding: [40, 40] });
+                    map.fitBounds(geojson.getBounds(), { padding: [40, 40], maxZoom: 17 });
                 }
             }
         });
     
-    // Fix map layout issues
-    setTimeout(() => {
-        map.invalidateSize();
-    }, 1000);
+    // Fix map layout issues robustly
+    if (typeof ResizeObserver !== 'undefined') {
+        new ResizeObserver(() => {
+            if (typeof map !== 'undefined') map.invalidateSize();
+        }).observe(document.getElementById('dashboardMap'));
+    } else {
+        setTimeout(() => { if (typeof map !== 'undefined') map.invalidateSize(); }, 1000);
+    }
     
     // Productivity Chart
     const ctxProd = document.getElementById('productivityChart').getContext('2d');
@@ -180,44 +199,50 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // Initialize Print Charts (Hidden)
-    new Chart(document.getElementById('commodityChartPrint').getContext('2d'), {
-        type: 'doughnut',
-        data: {
-            labels: <?= json_encode($commLabels) ?>,
-            datasets: [{
-                data: <?= json_encode($commValues) ?>,
-                backgroundColor: ['#1e3a5f', '#a3d9a5', '#3b82f6', '#ef4444', '#8b5cf6'],
-                borderWidth: 1
-            }]
-        },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } }, animation: false }
-    });
-
-    new Chart(document.getElementById('activityChartPrint').getContext('2d'), {
-        type: 'line',
-        data: {
-            labels: <?= json_encode($monthlyLabels) ?>,
-            datasets: [{
-                data: <?= json_encode($monthlyProdData) ?>,
-                borderColor: '#1e3a5f',
-                backgroundColor: 'rgba(30, 58, 95, 0.05)',
-                fill: true,
-                tension: 0.1,
-                pointRadius: 4,
-                pointBackgroundColor: '#1e3a5f'
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: { legend: { display: false } },
-            scales: {
-                y: { beginAtZero: true, grid: { color: '#eee' }, ticks: { font: { size: 9 } } },
-                x: { grid: { display: false }, ticks: { font: { size: 9 } } }
+    const commPrint = document.getElementById('commodityChartPrint');
+    if (commPrint) {
+        new Chart(commPrint.getContext('2d'), {
+            type: 'doughnut',
+            data: {
+                labels: <?= json_encode($commLabels) ?>,
+                datasets: [{
+                    data: <?= json_encode($commValues) ?>,
+                    backgroundColor: ['#1e3a5f', '#a3d9a5', '#3b82f6', '#ef4444', '#8b5cf6'],
+                    borderWidth: 1
+                }]
             },
-            animation: false
-        }
-    });
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } }, animation: false }
+        });
+    }
+
+    const actPrint = document.getElementById('activityChartPrint');
+    if (actPrint) {
+        new Chart(actPrint.getContext('2d'), {
+            type: 'line',
+            data: {
+                labels: <?= json_encode($monthlyLabels) ?>,
+                datasets: [{
+                    data: <?= json_encode($monthlyProdData) ?>,
+                    borderColor: '#1e3a5f',
+                    backgroundColor: 'rgba(30, 58, 95, 0.05)',
+                    fill: true,
+                    tension: 0.1,
+                    pointRadius: 4,
+                    pointBackgroundColor: '#1e3a5f'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { beginAtZero: true, grid: { color: '#eee' }, ticks: { font: { size: 9 } } },
+                    x: { grid: { display: false }, ticks: { font: { size: 9 } } }
+                },
+                animation: false
+            }
+        });
+    }
 
     // Layer Toggles Removed
 });
@@ -303,7 +328,7 @@ function printStatistics() {
                     <i class="fas fa-triangle-exclamation pulse-alert"></i>
                 </div>
                 <div class="text-white">
-                    <h5 class="fw-800 mb-1" style="letter-spacing: -0.5px;">Darurat Bencana: <?= esc($disasterLands[0]['nama_lahan']) ?></h5>
+                    <h5 class="fw-800 mb-1" style="letter-spacing: -0.5px;">Darurat Bencana: <?= esc($disasterLands[0]['nama_lahan']) ?><?= !empty($disasterLands[0]['deskripsi_bencana']) ? ' (' . esc($disasterLands[0]['deskripsi_bencana']) . ')' : '' ?></h5>
                     <p class="small mb-0 opacity-80 fw-500"><?= esc($disasterLands[0]['deskripsi_bencana']) ?></p>
                 </div>
             </div>
@@ -381,7 +406,7 @@ function printStatistics() {
 
 
 <!-- Header Section -->
-<div class="d-flex justify-content-between align-items-end mb-4">
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-end gap-3 mb-4">
     <div>
         <h3 class="fw-800 mb-1">Dashboard Utama</h3>
         <p class="text-muted small mb-0 fw-500">Monitoring real-time aktivitas pertanian wilayah Rajabasa.</p>
@@ -396,23 +421,23 @@ function printStatistics() {
 
 <!-- KPI Cards -->
 <div class="row g-3 mb-5 kpi-cards-row">
-    <div class="col">
-        <div class="premium-card p-4 h-100 border-0 shadow-sm">
+    <div class="col-6 col-sm-6 col-xl">
+        <div class="premium-card p-3 p-xl-4 h-100 border-0 shadow-sm">
             <div class="d-flex align-items-center gap-3 mb-3">
                 <div class="bg-success bg-opacity-10 text-success p-2 rounded-3" style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;">
                     <i class="fas fa-map-marked-alt"></i>
                 </div>
                 <span class="text-muted x-small fw-800 text-uppercase letter-spacing-1">Total Managed Area</span>
             </div>
-            <h3 class="fw-800 mb-1"><?= number_format($summary['total_luas'] ?? 1248.6, 1) ?></h3>
+            <h3 class="fw-800 mb-1"><?= number_format($summary['total_luas'] ?? 0, 2) ?></h3>
             <div class="d-flex align-items-center gap-2">
                 <span class="text-muted small fw-600">ha</span>
                 <span class="text-success x-small fw-800"><i class="fas fa-layer-group me-1"></i> <?= count($lands) ?> Plot Lahan</span>
             </div>
         </div>
     </div>
-    <div class="col">
-        <div class="premium-card p-4 h-100 border-0 shadow-sm">
+    <div class="col-6 col-sm-6 col-xl">
+        <div class="premium-card p-3 p-xl-4 h-100 border-0 shadow-sm">
             <div class="d-flex align-items-center gap-3 mb-3">
                 <div class="bg-warning bg-opacity-10 text-warning p-2 rounded-3" style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;">
                     <i class="fas fa-users"></i>
@@ -426,23 +451,23 @@ function printStatistics() {
             </div>
         </div>
     </div>
-    <div class="col">
-        <div class="premium-card p-4 h-100 border-0 shadow-sm">
+    <div class="col-6 col-sm-6 col-xl">
+        <div class="premium-card p-3 p-xl-4 h-100 border-0 shadow-sm">
             <div class="d-flex align-items-center gap-3 mb-3">
                 <div class="bg-danger bg-opacity-10 text-danger p-2 rounded-3" style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;">
                     <i class="fas fa-chart-line"></i>
                 </div>
                 <span class="text-muted x-small fw-800 text-uppercase letter-spacing-1">Avg Productivity</span>
             </div>
-            <h3 class="fw-800 mb-1"><?= number_format($avgProd, 1) ?></h3>
+            <h3 class="fw-800 mb-1"><?= number_format($avgProd, 2) ?></h3>
             <div class="d-flex align-items-center gap-2">
                 <span class="text-muted small fw-600">ton/ha</span>
                 <span class="text-muted x-small fw-800">→ Real-time Data</span>
             </div>
         </div>
     </div>
-    <div class="col">
-        <div class="premium-card p-4 h-100 border-0 shadow-sm">
+    <div class="col-6 col-sm-6 col-xl">
+        <div class="premium-card p-3 p-xl-4 h-100 border-0 shadow-sm">
             <div class="d-flex align-items-center gap-3 mb-3">
                 <div class="bg-primary bg-opacity-10 text-primary p-2 rounded-3" style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;">
                     <i class="fas fa-file-invoice"></i>
@@ -456,8 +481,8 @@ function printStatistics() {
             </div>
         </div>
     </div>
-    <div class="col">
-        <div class="premium-card p-4 h-100 border-0 shadow-sm" style="background: linear-gradient(135deg, #fff 0%, #fefce8 100%);">
+    <div class="col-6 col-sm-6 col-xl">
+        <div class="premium-card p-3 p-xl-4 h-100 border-0 shadow-sm" style="background: linear-gradient(135deg, #fff 0%, #fefce8 100%);">
             <div class="d-flex align-items-center gap-3 mb-3">
                 <div class="bg-dark text-white p-2 rounded-3" style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;">
                     <i class="fas fa-tractor"></i>
@@ -495,9 +520,9 @@ function printStatistics() {
 <!-- Main Section: Map & Activity -->
 <div class="row g-4 mb-5">
     <div class="col-md-8">
-        <div class="premium-card p-0 overflow-hidden border-0 shadow-sm position-relative" style="height: 500px;">
+        <div class="premium-card p-0 overflow-hidden border-0 shadow-sm position-relative map-container-dash">
             <!-- Real Leaflet Map Container -->
-            <div id="dashboardMap" style="width: 100%; height: 100%; z-index: 1;"></div>
+            <div id="dashboardMap" style="width: 100%; height: 100%; z-index: 1; background-color: #f8fafc !important;"></div>
             
             <!-- Map Layers Filter Removed -->
 
@@ -509,20 +534,32 @@ function printStatistics() {
             </div>
 
             <!-- Map Legend (Exact Copy from Main Map) -->
-            <div class="position-absolute top-0 start-0 m-4 p-3 bg-white rounded-4 shadow-lg border" style="z-index: 1000; width: 220px; background: rgba(255,255,255,0.92); backdrop-filter: blur(10px);">
-                <span class="panel-title" style="font-size: 10px; font-weight: 800; text-transform: uppercase; color: #64748b; letter-spacing: 1px; margin-bottom: 15px; display: block;">Legenda Status Lahan</span>
+            <div class="position-absolute top-0 start-0 m-4 p-3 bg-white rounded-4 shadow-lg border map-legend-dash" style="z-index: 1000; background: rgba(255,255,255,0.92); backdrop-filter: blur(10px);">
+                <span class="panel-title" style="font-size: 10px; font-weight: 800; text-transform: uppercase; color: #64748b; letter-spacing: 1px; margin-bottom: 15px; display: block;">Legenda Status Fase</span>
                 <div class="d-flex flex-column gap-2">
                     <div class="d-flex align-items-center gap-2">
+                        <div style="background: #fbbf24; width: 12px; height: 12px; border: 2px solid white; border-radius: 50%; box-shadow: 0 0 0 1px #fbbf24;"></div>
+                        <span class="fw-800 text-dark" style="font-size: 11px;">Persiapan Lahan</span>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
                         <div style="background: #22c55e; width: 12px; height: 12px; border: 2px solid white; border-radius: 50%; box-shadow: 0 0 0 1px #22c55e;"></div>
-                        <span class="fw-800 text-dark" style="font-size: 11px;">Lahan Saya (Aktif)</span>
+                        <span class="fw-800 text-dark" style="font-size: 11px;">Fase Tanam</span>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <div style="background: #3b82f6; width: 12px; height: 12px; border: 2px solid white; border-radius: 50%; box-shadow: 0 0 0 1px #3b82f6;"></div>
+                        <span class="fw-800 text-dark" style="font-size: 11px;">Pemeliharaan</span>
                     </div>
                     <div class="d-flex align-items-center gap-2">
                         <div style="background: #f59e0b; width: 12px; height: 12px; border: 2px solid white; border-radius: 50%; box-shadow: 0 0 0 1px #f59e0b;"></div>
-                        <span class="fw-800 text-dark" style="font-size: 11px;">Persiapan / Bera</span>
+                        <span class="fw-800 text-dark" style="font-size: 11px;">Siap Panen</span>
                     </div>
                     <div class="d-flex align-items-center gap-2">
+                        <div style="background: #94a3b8; width: 12px; height: 12px; border: 2px solid white; border-radius: 50%; box-shadow: 0 0 0 1px #94a3b8;"></div>
+                        <span class="fw-800 text-dark" style="font-size: 11px;">Lahan Bera</span>
+                    </div>
+                    <div class="d-flex align-items-center gap-2 mt-1 pt-2 border-top">
                         <div style="background: #ef4444; width: 12px; height: 12px; border: 2px solid white; border-radius: 50%; box-shadow: 0 0 0 1px #ef4444;"></div>
-                        <span class="fw-800 text-dark" style="font-size: 11px;">Terkena Bencana</span>
+                        <span class="fw-800 text-danger" style="font-size: 11px;">Status Darurat/Bencana</span>
                     </div>
                 </div>
             </div>
@@ -686,12 +723,19 @@ function locateUser(mapObj) {
                     <td><?= esc($group['nama']) ?></td>
                     <td class="text-muted small"><?= esc($group['kecamatan']) ?></td>
                     <td class="text-muted small"><?= number_format($group['total_luas'], 1) ?> ha</td>
-                    <td class="fs-6 fw-800 text-dark"><?= number_format($group['prod'], 1) ?> <span class="text-muted x-small fw-700">ton/ha</span></td>
-                    <td class="text-success small">
-                        <?php if ($group['prod'] > 0): ?>
-                            <i class="fas fa-arrow-up me-1"></i> 0%
+                    <td class="fs-6 fw-800 text-dark"><?= number_format($group['prod'], 2) ?> <span class="text-muted x-small fw-700">ton/ha</span></td>
+                    <td>
+                        <?php if ($group['prod'] > 0 && $group['trend'] !== 0.0): ?>
+                            <?php 
+                                $isPositive = $group['trend'] > 0;
+                                $trendColor = $isPositive ? 'text-success' : 'text-danger';
+                                $trendIcon = $isPositive ? 'fa-arrow-up' : 'fa-arrow-down';
+                            ?>
+                            <span class="<?= $trendColor ?> small fw-700">
+                                <i class="fas <?= $trendIcon ?> me-1"></i> <?= number_format(abs($group['trend']), 1) ?>%
+                            </span>
                         <?php else: ?>
-                            <span class="text-muted">-</span>
+                            <span class="text-muted small">-</span>
                         <?php endif; ?>
                     </td>
                 </tr>

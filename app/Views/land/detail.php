@@ -25,6 +25,11 @@
     .info-block { margin-bottom: 22px; }
     .info-block .label { font-size: 11px; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; display: block; margin-bottom: 6px; }
     .info-block .value { font-size: 15px; font-weight: 700; color: #1e293b; }
+    .edit-detail-modal .modal-header { background: linear-gradient(135deg, #1e3a1f 0%, #2d5a2e 100%); color: white; border-radius: 16px 16px 0 0; }
+    .edit-detail-modal .modal-content { border-radius: 16px; border: none; box-shadow: 0 25px 50px rgba(0,0,0,0.15); }
+    .edit-detail-modal .form-label { font-size: 11px; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; }
+    .edit-detail-modal .form-control, .edit-detail-modal .form-select { border-radius: 10px; border: 2px solid #e2e8f0; font-weight: 600; font-size: 14px; padding: 10px 14px; transition: border-color .2s; }
+    .edit-detail-modal .form-control:focus, .edit-detail-modal .form-select:focus { border-color: #22c55e; box-shadow: 0 0 0 3px rgba(34,197,94,.15); }
 </style>
 <?= $this->endSection() ?>
 
@@ -50,6 +55,19 @@
         </div>
     </div>
 </div>
+
+<?php if(session()->getFlashdata('success')): ?>
+<div class="alert alert-success alert-dismissible fade show rounded-3 mb-3 fw-bold" role="alert">
+    <i class="fas fa-check-circle me-2"></i><?= session()->getFlashdata('success') ?>
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+<?php endif; ?>
+<?php if(session()->getFlashdata('error')): ?>
+<div class="alert alert-danger alert-dismissible fade show rounded-3 mb-3 fw-bold" role="alert">
+    <i class="fas fa-exclamation-triangle me-2"></i><?= session()->getFlashdata('error') ?>
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+<?php endif; ?>
 
 <div class="row g-4">
     <div class="col-lg-5">
@@ -97,9 +115,15 @@
             </div>
 
             <div class="info-block mt-4 pt-3 border-top">
-                <span class="label">Aksi Kelola</span>
-                <div class="mt-2">
-                    <a href="<?= base_url('peta-gis') ?>?edit=<?= $land['id_lahan'] ?>" class="btn btn-outline-success btn-sm fw-bold rounded-pill px-4"><i class="fas fa-edit me-1"></i> Edit Polygon Lahan</a>
+                <span class="label">Aksi & Traceability</span>
+                <div class="mt-2 d-flex flex-wrap gap-2">
+                    <?php if(session()->get('role') !== 'petani'): ?>
+                    <button type="button" class="btn btn-success btn-sm fw-bold rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#editDetailModal">
+                        <i class="fas fa-pen me-1"></i> Edit Detail
+                    </button>
+                    <?php endif; ?>
+                    <a href="<?= base_url('peta-gis') ?>?edit=<?= $land['id_lahan'] ?>" class="btn btn-outline-success btn-sm fw-bold rounded-pill px-4"><i class="fas fa-draw-polygon me-1"></i> Edit Polygon</a>
+                    <a href="<?= base_url('trace/'.$land['id_lahan']) ?>" target="_blank" class="btn btn-outline-dark btn-sm fw-bold rounded-pill px-4"><i class="fas fa-qrcode me-1"></i> QR Traceability</a>
                 </div>
             </div>
         </div>
@@ -169,6 +193,53 @@
     </div>
 </div>
 
+<?php if(session()->get('role') !== 'petani'): ?>
+<!-- Edit Detail Modal — placed outside all rows/cols for correct Bootstrap behavior -->
+<div class="modal fade edit-detail-modal" id="editDetailModal" tabindex="-1" aria-labelledby="editDetailModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div>
+                    <div style="font-size:10px; font-weight:800; opacity:0.7; letter-spacing:1px; text-transform:uppercase;">Ubah Informasi</div>
+                    <h5 class="modal-title fw-800 mb-0" id="editDetailModalLabel">Edit Detail Lahan</h5>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <form id="editDetailForm" action="<?= base_url('land/update-detail/'.$land['id_lahan']) ?>" method="post">
+                    <?= csrf_field() ?>
+                    <div class="mb-3">
+                        <label for="edit_nama_lahan" class="form-label">Nama Lahan</label>
+                        <input type="text" id="edit_nama_lahan" name="nama_lahan" class="form-control" value="<?= esc($land['nama_lahan']) ?>">
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_komoditas" class="form-label">Komoditas Utama</label>
+                        <select id="edit_komoditas" name="komoditas" class="form-select">
+                            <option value="padi" <?= ($land['komoditas'] === 'padi') ? 'selected' : '' ?>>Padi</option>
+                            <option value="jagung" <?= ($land['komoditas'] === 'jagung') ? 'selected' : '' ?>>Jagung</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_alamat" class="form-label">Alamat / Detail Lokasi</label>
+                        <input type="text" id="edit_alamat" name="alamat" class="form-control" value="<?= esc($land['alamat'] ?? '') ?>" placeholder="Contoh: Kec. Sukarame, RT 02">
+                    </div>
+                    <div class="mb-4">
+                        <label for="edit_luas" class="form-label">Luas Lahan (Ha) <small class="text-success fw-bold ms-1">Opsional — kosongkan jika tidak berubah</small></label>
+                        <input type="text" id="edit_luas" name="luas" class="form-control" value="<?= esc($land['luas']) ?>" placeholder="Contoh: 1.5 atau 1,5">
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-success fw-bold rounded-pill px-4 flex-fill">
+                            <i class="fas fa-save me-1"></i> Simpan Perubahan
+                        </button>
+                        <button type="button" class="btn btn-light fw-bold rounded-pill px-4" data-bs-dismiss="modal">Batal</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
+
 <?= $this->endSection() ?>
 
 <?= $this->section('scripts') ?>
@@ -184,16 +255,31 @@ document.addEventListener('DOMContentLoaded', function() {
     
     L.control.zoom({ position: 'topright' }).addTo(map);
 
+    var statusBencana = "<?= $land['status_bencana'] ?>";
+    var statusFase = "<?= $land['status_fase'] ?>";
+    
+    var fillColor = '#22c55e'; // Default Hijau (Tumbuh/Tanam)
+    
+    if (statusBencana === 'darurat') {
+        fillColor = '#ef4444'; // Merah (Bencana)
+    } else {
+        if (statusFase === 'persiapan') fillColor = '#94a3b8'; // Abu-abu
+        else if (statusFase === 'tanam') fillColor = '#3b82f6'; // Biru
+        else if (statusFase === 'tumbuh') fillColor = '#10b981'; // Hijau
+        else if (statusFase === 'panen') fillColor = '#f59e0b'; // Emas
+        else if (statusFase === 'bera') fillColor = '#94a3b8'; // Abu-abu
+    }
+
     var geojsonStr = `<?= $land['geojson'] ?>`;
     if(geojsonStr) {
         try {
             var geojsonData = JSON.parse(geojsonStr);
             var landLayer = L.geoJSON(geojsonData, {
                 style: {
-                    color: '#4ade80',
-                    weight: 3,
-                    fillColor: '#22c55e',
-                    fillOpacity: 0.3
+                    color: '#ffffff', // White stroke
+                    weight: 2,
+                    fillColor: fillColor,
+                    fillOpacity: 0.5
                 }
             }).addTo(map);
             

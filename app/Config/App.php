@@ -18,6 +18,21 @@ class App extends BaseConfig
      */
     public string $baseURL = 'http://agrimapgis.test/';
 
+    public function __construct()
+    {
+        parent::__construct();
+
+        // Prioritize X-Forwarded-Host from Ngrok, fallback to HTTP_HOST
+        $host = $_SERVER['HTTP_X_FORWARDED_HOST'] ?? $_SERVER['HTTP_HOST'] ?? null;
+
+        if ($host) {
+            $protocol = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || 
+                         isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') 
+                        ? 'https://' : 'http://';
+            $this->baseURL = $protocol . $host . '/';
+        }
+    }
+
     /**
      * Allowed Hostnames in the Site URL other than the hostname in the baseURL.
      * If you want to accept multiple Hostnames, set this.

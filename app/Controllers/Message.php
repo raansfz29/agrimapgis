@@ -18,11 +18,28 @@ class Message extends BaseController
         $userRole = session()->get('role');
         $idKelompok = session()->get('id_kelompok');
 
-        // Get list of contacts (if PPL/Admin, show all farmers; if Farmer, show PPL in same group)
+        $db = \Config\Database::connect();
+        // Get list of contacts - include kelompok tani name
         if ($userRole === 'ppl' || $userRole === 'admin') {
-            $contacts = $userModel->where('role', 'petani')->findAll();
+            $contacts = $db->table('users')
+                ->select('users.*, farmer_groups.nama_kelompok')
+                ->join('farmer_groups', 'farmer_groups.id_kelompok = users.id_kelompok', 'left')
+                ->where('users.role', 'petani')
+                ->get()->getResultArray();
         } else {
-            $contacts = $userModel->where('role', 'ppl')->findAll();
+            // For petani: show PPL and other members in the same group
+            $contacts = $db->table('users')
+                ->select('users.*, farmer_groups.nama_kelompok')
+                ->join('farmer_groups', 'farmer_groups.id_kelompok = users.id_kelompok', 'left')
+                ->groupStart()
+                    ->where('users.role', 'ppl')
+                    ->orGroupStart()
+                        ->where('users.role', 'petani')
+                        ->where('users.id_kelompok', $idKelompok)
+                        ->where('users.id_user !=', session()->get('id_user'))
+                    ->groupEnd()
+                ->groupEnd()
+                ->get()->getResultArray();
         }
 
         $data = [

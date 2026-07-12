@@ -150,13 +150,13 @@
 <?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
-<div class="row mb-4 align-items-center">
-    <div class="col">
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-3">
+    <div>
         <h3 class="fw-800 mb-1">Pusat Mitigasi & Krisis</h3>
         <p class="text-muted small mb-0 fw-600">Pemantauan lahan pertanian berbasis risiko wilayah Rajabasa.</p>
     </div>
-    <div class="col-auto">
-        <div class="bg-white border rounded-4 px-4 py-3 d-flex align-items-center gap-3 shadow-sm border-0">
+    <div>
+        <div class="bg-white border rounded-4 px-3 py-2 d-flex align-items-center gap-2 shadow-sm border-0">
             <div class="bg-danger bg-opacity-10 text-danger p-2 rounded-3">
                 <i class="fas fa-satellite-dish"></i>
             </div>
@@ -261,31 +261,31 @@
         <div class="premium-card p-0 overflow-hidden border-0 shadow-sm position-relative">
             <div id="disasterMap"></div>
             <div class="position-absolute bottom-0 start-0 m-4 p-3 bg-white rounded-4 shadow-lg border-0" style="z-index: 1000; width: 220px; border: 1px solid var(--border-color) !important;">
-                <h6 class="fw-800 text-muted text-uppercase mb-3" style="font-size: 10px; letter-spacing: 1px;">Indikator Status & Fase</h6>
+                <span class="panel-title" style="font-size: 10px; font-weight: 800; text-transform: uppercase; color: #64748b; letter-spacing: 1px; margin-bottom: 15px; display: block;">Legenda Status Fase</span>
                 <div class="d-flex flex-column gap-2">
                     <div class="d-flex align-items-center gap-2">
-                        <div class="rounded-circle emergency-pulse" style="width: 12px; height: 12px; background: #ef4444;"></div>
-                        <span class="fw-900 text-danger" style="font-size: 11px;">DARURAT BENCANA</span>
+                        <div style="background: #fbbf24; width: 12px; height: 12px; border: 2px solid white; border-radius: 50%; box-shadow: 0 0 0 1px #fbbf24;"></div>
+                        <span class="fw-800 text-dark" style="font-size: 11px;">Persiapan Lahan</span>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <div style="background: #22c55e; width: 12px; height: 12px; border: 2px solid white; border-radius: 50%; box-shadow: 0 0 0 1px #22c55e;"></div>
+                        <span class="fw-800 text-dark" style="font-size: 11px;">Fase Tanam</span>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <div style="background: #3b82f6; width: 12px; height: 12px; border: 2px solid white; border-radius: 50%; box-shadow: 0 0 0 1px #3b82f6;"></div>
+                        <span class="fw-800 text-dark" style="font-size: 11px;">Pemeliharaan</span>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <div style="background: #f59e0b; width: 12px; height: 12px; border: 2px solid white; border-radius: 50%; box-shadow: 0 0 0 1px #f59e0b;"></div>
+                        <span class="fw-800 text-dark" style="font-size: 11px;">Siap Panen</span>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <div style="background: #94a3b8; width: 12px; height: 12px; border: 2px solid white; border-radius: 50%; box-shadow: 0 0 0 1px #94a3b8;"></div>
+                        <span class="fw-800 text-dark" style="font-size: 11px;">Lahan Bera</span>
                     </div>
                     <div class="d-flex align-items-center gap-2 mt-1 pt-2 border-top">
-                        <div class="rounded-circle" style="width: 10px; height: 10px; background: #fbbf24;"></div>
-                        <span class="fw-800 text-muted" style="font-size: 10px;">Persiapan Lahan</span>
-                    </div>
-                    <div class="d-flex align-items-center gap-2">
-                        <div class="rounded-circle" style="width: 10px; height: 10px; background: #22c55e;"></div>
-                        <span class="fw-800 text-muted" style="font-size: 10px;">Fase Tanam</span>
-                    </div>
-                    <div class="d-flex align-items-center gap-2">
-                        <div class="rounded-circle" style="width: 10px; height: 10px; background: #3b82f6;"></div>
-                        <span class="fw-800 text-muted" style="font-size: 10px;">Pemeliharaan</span>
-                    </div>
-                    <div class="d-flex align-items-center gap-2">
-                        <div class="rounded-circle" style="width: 10px; height: 10px; background: #f59e0b;"></div>
-                        <span class="fw-800 text-muted" style="font-size: 10px;">Siap Panen</span>
-                    </div>
-                    <div class="d-flex align-items-center gap-2">
-                        <div class="rounded-circle" style="width: 10px; height: 10px; background: #94a3b8;"></div>
-                        <span class="fw-800 text-muted" style="font-size: 10px;">Lahan Bera</span>
+                        <div class="emergency-pulse" style="background: #ef4444; width: 12px; height: 12px; border: 2px solid white; border-radius: 50%; box-shadow: 0 0 0 1px #ef4444;"></div>
+                        <span class="fw-800 text-danger" style="font-size: 11px;">Status Darurat/Bencana</span>
                     </div>
                 </div>
             </div>
@@ -319,7 +319,6 @@
                                    style="background:#fff1f2; color:#e11d48; border:1px solid #fecdd3; border-radius:8px; font-size:10px; white-space:nowrap;">
                                     <i class="fas fa-circle-info me-1"></i> Detail Bencana
                                 </a>
-                                <?php if (session()->get('role') !== 'petani'): ?>
                                 <form method="post" action="<?= base_url('disaster/deactivate/' . $land['id_lahan']) ?>" class="w-100">
                                     <?= csrf_field() ?>
                                     <button type="submit" class="btn btn-sm fw-800 w-100"
@@ -328,15 +327,12 @@
                                         <i class="fas fa-check me-1"></i> Selesaikan
                                     </button>
                                 </form>
-                                <?php endif; ?>
                             <?php else: ?>
-                                <?php if (session()->get('role') !== 'petani'): ?>
                                 <a href="<?= base_url('disaster/activate/' . $land['id_lahan']) ?>"
                                    class="btn btn-sm fw-800 w-100"
                                    style="background:#fff7ed; color:#ea580c; border:1px solid #fed7aa; border-radius:8px; font-size:10px; white-space:nowrap;">
                                     <i class="fas fa-triangle-exclamation me-1"></i> Laporkan
                                 </a>
-                                <?php endif; ?>
                                 <a href="<?= base_url('land/detail/' . $land['id_lahan']) ?>"
                                    class="btn btn-sm fw-800 w-100"
                                    style="background:#f8fafc; color:#64748b; border:1px solid #e2e8f0; border-radius:8px; font-size:10px; white-space:nowrap;">

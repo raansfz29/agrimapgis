@@ -1,5 +1,69 @@
 <?= $this->extend('layouts/premium') ?>
 
+<?= $this->section('styles') ?>
+<style>
+    /* Floating Bottom Sheet Form for Mobile */
+    @media (max-width: 991px) {
+        #edit-form:not(.d-none) {
+            position: fixed !important;
+            bottom: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            width: 100vw !important;
+            height: 85vh !important;
+            z-index: 2000 !important;
+            background: #f8fafc !important;
+            border-radius: 32px 32px 0 0 !important;
+            box-shadow: 0 -10px 40px rgba(0,0,0,0.15) !important;
+            padding: 20px 20px 0 20px !important;
+            overflow-y: auto !important;
+            display: block !important;
+            margin: 0 !important;
+            animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        
+        #edit-form .premium-card {
+            box-shadow: none !important;
+            border: none !important;
+            background: transparent !important;
+            padding: 0 0 40px 0 !important;
+        }
+
+        .mobile-close-btn { display: flex !important; }
+        
+        /* Drag handle indicator */
+        #edit-form::before {
+            content: '';
+            position: absolute;
+            top: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 40px;
+            height: 5px;
+            background: #cbd5e1;
+            border-radius: 10px;
+        }
+    }
+    
+    @keyframes slideUp {
+        from { transform: translateY(100%); }
+        to { transform: translateY(0); }
+    }
+    
+    .mobile-close-btn { 
+        display: none; 
+        background: rgba(226, 232, 240, 0.8);
+        border: none;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        align-items: center;
+        justify-content: center;
+        color: #475569;
+    }
+</style>
+<?= $this->endSection() ?>
+
 <?= $this->section('content') ?>
 <div class="row g-4">
     <div class="col-md-4">
@@ -39,10 +103,15 @@
 
     <div class="col-md-8 d-none" id="edit-form">
         <!-- Edit Profile Form -->
-        <div class="premium-card mb-4 shadow-sm">
+        <div class="premium-card mb-4 shadow-sm pt-4 pt-md-4">
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <h5 class="fw-800 mb-0">Pengaturan Profil</h5>
-                <span class="badge bg-primary bg-opacity-10 text-primary fw-bold px-3">Form Update</span>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge bg-primary bg-opacity-10 text-primary fw-bold px-3">Form Update</span>
+                    <button type="button" class="mobile-close-btn" onclick="document.getElementById('edit-form').classList.add('d-none');" title="Tutup">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
             </div>
             
             <?php if (session()->getFlashdata('success')) : ?>

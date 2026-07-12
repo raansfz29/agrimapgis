@@ -172,10 +172,8 @@
     </div>
 </div>
 
-<div class="mockup-footer">
-    <div>AGRIMAPGIS • HIGH-FIDELITY MOCKUP • V2.4</div>
-    <div>RAJABASA, LAMPUNG SELATAN • SATELIT: SENTINEL-2 L2A • CLOUD COVERAGE: 2.4%</div>
-    <div>MODERN AGRICULTURE • GREEN / EARTH / GOLD</div>
+<div class="mt-4 pb-2 text-center opacity-50 small fw-bold" style="color: white; z-index: 1000; position: relative;">
+    &copy; <?= date('Y') ?> AgriMapGIS. Hak Cipta Dilindungi.
 </div>
 <?= $this->endSection() ?>
 

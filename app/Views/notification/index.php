@@ -30,6 +30,7 @@
         background: white;
         color: #64748b;
         transition: all 0.2s;
+        white-space: nowrap !important;
     }
     .filter-btn.active {
         background: #1e293b;
@@ -85,6 +86,7 @@
         display: flex;
         gap: 10px;
         justify-content: flex-end;
+        flex-wrap: wrap;
     }
     .action-bar button {
         border-radius: 100px;
@@ -94,6 +96,7 @@
         cursor: pointer;
         border: 1.5px solid;
         transition: all 0.2s;
+        white-space: nowrap !important;
     }
     .btn-mark-all {
         background: #166534;
@@ -107,6 +110,28 @@
         border-color: #e2e8f0;
     }
     .btn-clear:hover { background: #f1f5f9; }
+    
+    #filterBar {
+        overflow-x: auto;
+        padding-bottom: 5px;
+        scrollbar-width: none; /* Firefox */
+        -ms-overflow-style: none; /* IE/Edge */
+    }
+    #filterBar::-webkit-scrollbar {
+        display: none; /* Chrome/Safari */
+    }
+
+    @media (max-width: 991px) {
+        .notif-item {
+            gap: 10px;
+            padding: 10px;
+        }
+        .notif-icon-wrap {
+            width: 32px; height: 32px;
+            font-size: 14px;
+        }
+        .notif-hero { padding: 20px; }
+    }
 </style>
 <?= $this->endSection() ?>
 

@@ -194,8 +194,22 @@
                 <?php echo csrf_field(); ?>
                 
                 <div class="mb-4">
+                    <label class="form-premium-label">JENIS BENCANA</label>
+                    <select name="jenis_bencana" class="form-select input-premium" required>
+                        <option value="">Pilih Jenis Bencana...</option>
+                        <option value="Banjir">Banjir / Genangan Air</option>
+                        <option value="Kekeringan">Kekeringan / Kekurangan Air</option>
+                        <option value="Hama Wereng">Serangan Hama Wereng</option>
+                        <option value="Hama Tikus">Serangan Hama Tikus</option>
+                        <option value="Penyakit Jamur">Penyakit Tanaman (Jamur/Bakteri)</option>
+                        <option value="Angin Puting Beliung">Angin Puting Beliung / Badai</option>
+                        <option value="Lainnya">Lainnya</option>
+                    </select>
+                </div>
+
+                <div class="mb-4">
                     <label class="form-premium-label">DESKRIPSI KERUSAKAN</label>
-                    <textarea name="deskripsi_bencana" class="form-control input-premium" rows="5" placeholder="Jelaskan detail bencana, penyebab, dan estimasi tingkat kerusakan lahan..." required></textarea>
+                    <textarea name="deskripsi_bencana" class="form-control input-premium" rows="4" placeholder="Jelaskan detail bencana, penyebab, dan estimasi tingkat kerusakan lahan..." required></textarea>
                 </div>
 
                 <div class="mb-4">

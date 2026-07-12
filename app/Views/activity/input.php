@@ -106,12 +106,12 @@
 <?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
-<div class="form-header d-flex justify-content-between align-items-center">
+<div class="form-header d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3">
     <div>
         <h4>Catat Aktivitas</h4>
-        <p>Lengkapi data aktivitas pertanian Anda.</p>
+        <p class="mb-0">Lengkapi data aktivitas pertanian Anda.</p>
     </div>
-    <div class="search-box w-25">
+    <div class="search-box" style="width: 100%; max-width: 300px;">
         <div class="input-group input-group-sm">
             <span class="input-group-text bg-white border-end-0"><i class="fas fa-search text-muted"></i></span>
             <input type="text" class="form-control border-start-0 ps-0" placeholder="Cari lahan, aktivitas...">
@@ -365,13 +365,38 @@
             e.preventDefault();
             const formData = new FormData(this);
             const data = {};
-            formData.forEach((value, key) => { data[key] = value; });
-            const saved = await saveActivityOffline(data);
-            if (saved) {
-                alert('Koneksi tidak tersedia. Aktivitas telah disimpan secara OFFLINE dan akan disinkronkan otomatis saat ada internet.');
-                window.location.href = '<?= base_url('dashboard') ?>';
+            const SKIP_KEYS = ['foto', 'csrf_test_name'];
+            formData.forEach((value, key) => {
+                if (!SKIP_KEYS.includes(key) && !key.startsWith('csrf')) {
+                    data[key] = value;
+                }
+            });
+
+            // Convert photo to base64 so it can be stored in IndexedDB and synced later
+            const fotoFile = document.getElementById('fotoInput').files[0];
+            if (fotoFile) {
+                const reader = new FileReader();
+                reader.onload = async function(ev) {
+                    data['foto_base64'] = ev.target.result;  // e.g. "data:image/jpeg;base64,..."
+                    data['foto_mime']   = fotoFile.type;
+                    data['foto_name']   = fotoFile.name;
+                    const saved = await saveActivityOffline(data);
+                    if (saved) {
+                        alert('Koneksi tidak tersedia. Aktivitas + foto telah disimpan secara OFFLINE dan akan disinkronkan otomatis saat ada internet.');
+                        window.location.href = '<?= base_url('dashboard') ?>';
+                    } else {
+                        alert('Gagal menyimpan data offline.');
+                    }
+                };
+                reader.readAsDataURL(fotoFile);
             } else {
-                alert('Gagal menyimpan data offline.');
+                const saved = await saveActivityOffline(data);
+                if (saved) {
+                    alert('Koneksi tidak tersedia. Aktivitas telah disimpan secara OFFLINE (tanpa foto) dan akan disinkronkan otomatis saat ada internet.');
+                    window.location.href = '<?= base_url('dashboard') ?>';
+                } else {
+                    alert('Gagal menyimpan data offline.');
+                }
             }
         }
     });

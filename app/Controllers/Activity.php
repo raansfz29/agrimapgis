@@ -18,6 +18,7 @@ class Activity extends BaseController
         $userIdKelompok = session()->get('id_kelompok');
 
         $filterKelompok = null;
+        $groups = [];
         if ($userRole === 'petani') {
             $filterKelompok = $userIdKelompok;
         } elseif ($userRole === 'ppl') {
@@ -36,21 +37,16 @@ class Activity extends BaseController
 
         // Optional filters
         $filterStatus = $this->request->getGet('status');
-        $filterDate = $this->request->getGet('date');
+        $filterMonth = $this->request->getGet('month'); // Format YYYY-MM
         $filterType = $this->request->getGet('type');
-        $filterVillage = $this->request->getGet('village');
+        $filterGroupId = $this->request->getGet('group'); // id_kelompok
 
         // Apply filters helper
-        $applyFilters = function($b) use ($filterStatus, $filterDate, $filterType, $filterVillage) {
+        $applyFilters = function($b) use ($filterStatus, $filterMonth, $filterType, $filterGroupId) {
             if ($filterStatus) $b->where('activities.status', $filterStatus);
-            if ($filterDate) $b->where('DATE(activities.created_at)', $filterDate);
+            if ($filterMonth) $b->like('activities.tanggal', $filterMonth);
             if ($filterType) $b->where('activities.jenis_aktivitas', $filterType);
-            if ($filterVillage) {
-                if ($filterVillage === 'RB Jaya') $b->like('lands.alamat', 'Jaya');
-                elseif ($filterVillage === 'RB Raya') $b->like('lands.alamat', 'Raya');
-                elseif ($filterVillage === 'Gedung Meneng') $b->like('lands.alamat', 'Meneng');
-                else $b->like('lands.alamat', $filterVillage);
-            }
+            if ($filterGroupId) $b->where('lands.id_kelompok', $filterGroupId);
         };
 
         // Count total for pagination
@@ -139,20 +135,24 @@ class Activity extends BaseController
         }
 
         $data = [
-            'title'           => 'Verifikasi Aktivitas',
-            'nama'            => session()->get('nama'),
-            'role'            => session()->get('role'),
-            'activities'      => $activities,
-            'selected'        => $selectedActivity,
-            'currentPage'     => $currentPage,
-            'totalPages'      => $totalPages,
+            'title' => 'Monitoring Aktivitas',
+            'nama' => session()->get('nama'),
+            'role' => session()->get('role'),
+            'activities' => $activities,
+            'selected' => $selectedActivity,
+            'flaggedCount' => $flaggedCount,
+            'pendingCount' => $pendingCount,
+            'distLabels' => $distLabels,
+            'distData' => $distData,
+            'currentPage' => $currentPage,
+            'totalPages' => $totalPages,
             'totalActivities' => $totalActivities,
-            'perPage'         => $perPage,
-            'flaggedCount'    => $flaggedCount,
-            'pendingCount'    => $pendingCount,
-            'filterStatus'    => $filterStatus,
-            'distLabels'      => $distLabels,
-            'distData'        => $distData
+            'perPage' => $perPage,
+            'filterStatus' => $filterStatus,
+            'filterMonth' => $filterMonth,
+            'filterType' => $filterType,
+            'filterGroupId' => $filterGroupId,
+            'managedGroups' => $groups
         ];
 
         if ($userRole === 'petani') {
@@ -294,7 +294,12 @@ class Activity extends BaseController
                 $geoResult = $landModel->getGeofencingResult($data['id_lahan'], (float)$longitude, (float)$latitude);
                 
                 if (!$geoResult || ($geoResult['is_inside'] == 0 && $geoResult['distance'] > 100)) {
-                    $dist = $geoResult ? round($geoResult['distance'], 1) : 'unknown';
+                    $distVal = $geoResult ? $geoResult['distance'] : 0;
+                    if ($distVal > 1000) {
+                        $dist = number_format($distVal / 1000, 2, ',', '.') . ' km';
+                    } else {
+                        $dist = $geoResult ? number_format($distVal, 0, ',', '.') . ' meter' : 'unknown';
+                    }
                     
                     // Notify Farmer (Rejected due to Out of Bounds)
                     $notifModel = new \App\Models\NotificationModel();
@@ -305,11 +310,11 @@ class Activity extends BaseController
                     $notifModel->createNotification(
                         $targetUserId,
                         '❌ Aktivitas Ditolak (Luar Lahan)',
-                        "Upaya input aktivitas '{$data['jenis_aktivitas']}' pada {$namaLahan} ditolak otomatis oleh sistem karena lokasi Anda berada di LUAR jangkauan lahan (jarak: {$dist} meter). Data tidak disimpan.",
+                        "Upaya input aktivitas '{$data['jenis_aktivitas']}' pada {$namaLahan} ditolak otomatis oleh sistem karena lokasi Anda berada di LUAR jangkauan lahan (jarak: {$dist}). Data tidak disimpan.",
                         'danger'
                     );
 
-                    return redirect()->back()->withInput()->with('error', "Gagal menyimpan aktivitas. Lokasi Anda berada di luar jangkauan lahan (jarak: {$dist} meter).");
+                    return redirect()->back()->withInput()->with('error', "Gagal menyimpan aktivitas. Lokasi Anda berada di luar jangkauan lahan (jarak: {$dist}).");
                 }
 
                 $insertedId = $activityModel->insertActivityWithPoint($data, $pointGeoJSON);
@@ -435,6 +440,22 @@ class Activity extends BaseController
         $updated = $activityModel->update($id, ['status' => 'approved']);
 
         if ($updated) {
+            // Auto-update land's status_fase based on approved activity
+            $faseMap = [
+                'pengolahan_tanah'       => 'persiapan',
+                'penanaman'              => 'tanam',
+                'irigasi'                => 'pemeliharaan',
+                'pemupukan_npk'          => 'pemeliharaan',
+                'penyemprotan_pestisida' => 'pemeliharaan',
+                'pemeliharaan'           => 'pemeliharaan',
+                'panen'                  => 'panen',
+            ];
+            $newFase = $faseMap[$activity['jenis_aktivitas']] ?? null;
+            if ($newFase) {
+                $landModel = new \App\Models\LandModel();
+                $landModel->updateLandFase($activity['id_lahan'], $newFase);
+            }
+
             // Notify farmer: approved
             $notifModel = new \App\Models\NotificationModel();
             $notifModel->createNotification(
@@ -728,5 +749,105 @@ class Activity extends BaseController
             ->setStatusCode(200)
             ->setContentType($mime)
             ->setBody(file_get_contents($path));
+    }
+
+    /**
+     * PWA Offline Sync Endpoint — accepts FormData from pwa-sync.js
+     * Returns JSON so the client knows whether to mark the item as synced.
+     */
+    public function syncOffline()
+    {
+        // Must be logged in; respond with JSON error otherwise
+        if (!session()->get('is_logged_in')) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Sesi telah berakhir. Silakan login kembali.']);
+        }
+
+        $activityModel = new ActivityModel();
+        $userId        = session()->get('id_user');
+
+        $idLahan        = $this->request->getPost('id_lahan');
+        $jenisAktivitas = $this->request->getPost('jenis_aktivitas');
+        $tanggal        = $this->request->getPost('tanggal') ?? date('Y-m-d');
+        $deskripsi      = $this->request->getPost('deskripsi') ?? 'Disimpan via mode offline PWA.';
+
+        // Basic validation
+        if (empty($idLahan) || empty($jenisAktivitas)) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Data tidak lengkap: id_lahan dan jenis_aktivitas wajib ada.']);
+        }
+
+        $data = [
+            'id_lahan'        => (int)$idLahan,
+            'id_user'         => $userId,
+            'jenis_aktivitas' => $jenisAktivitas,
+            'tanggal'         => $tanggal,
+            'deskripsi'       => $deskripsi,
+            'status'          => 'pending',
+        ];
+
+        // Optional: hasil panen
+        $hasilPanen = $this->request->getPost('hasil_panen');
+        if ($hasilPanen !== null && $hasilPanen !== '') {
+            $data['hasil_panen'] = (float)$hasilPanen;
+            $data['satuan']      = $this->request->getPost('satuan') ?? 'Ton';
+        }
+
+        // Optional: foto dari base64 (disimpan saat offline)
+        $fotoBase64 = $this->request->getPost('foto_base64');
+        $fotoMime   = $this->request->getPost('foto_mime') ?? 'image/jpeg';
+        $fotoName   = $this->request->getPost('foto_name') ?? 'offline_photo.jpg';
+        if (!empty($fotoBase64) && strpos($fotoBase64, 'base64,') !== false) {
+            try {
+                $base64Data = substr($fotoBase64, strpos($fotoBase64, 'base64,') + 7);
+                $imageData  = base64_decode($base64Data);
+                $ext        = pathinfo($fotoName, PATHINFO_EXTENSION) ?: 'jpg';
+                $newName    = 'offline_' . time() . '_' . uniqid() . '.' . $ext;
+                $savePath   = WRITEPATH . 'uploads/' . $newName;
+                if (file_put_contents($savePath, $imageData) !== false) {
+                    $data['foto'] = $newName;
+                }
+            } catch (\Exception $e) {
+                // Foto gagal — tetap lanjut tanpa foto
+            }
+        }
+
+        // Optional: koordinat GPS
+        $latitude  = $this->request->getPost('latitude');
+        $longitude = $this->request->getPost('longitude');
+
+        if (!empty($latitude) && !empty($longitude)) {
+            $pointGeoJSON = json_encode([
+                'type'        => 'Point',
+                'coordinates' => [(float)$longitude, (float)$latitude]
+            ]);
+            $inserted = $activityModel->insertActivityWithPoint($data, $pointGeoJSON);
+        } else {
+            $inserted = $activityModel->insert($data);
+        }
+
+        if ($inserted) {
+            // Notify PPL
+            try {
+                $notifModel     = new \App\Models\NotificationModel();
+                $farmerKelompok = (int)session()->get('id_kelompok');
+                $farmerNama     = session()->get('nama');
+                $landModel      = new LandModel();
+                $land           = $landModel->find($idLahan);
+                $namaLahan      = $land['nama_lahan'] ?? 'Lahan #' . $idLahan;
+
+                $notifModel->broadcastToGroup(
+                    $farmerKelompok,
+                    'ppl',
+                    '🔔 Aktivitas Baru (Sinkronisasi Offline)',
+                    "{$farmerNama} menyinkronkan aktivitas '{$jenisAktivitas}' pada lahan {$namaLahan} dari mode offline. Segera verifikasi.",
+                    'warning'
+                );
+            } catch (\Exception $e) {
+                // Notifikasi bukan blocker — tetap kembalikan sukses
+            }
+
+            return $this->response->setJSON(['success' => true, 'message' => 'Aktivitas berhasil disinkronkan.']);
+        }
+
+        return $this->response->setJSON(['success' => false, 'message' => 'Gagal menyimpan aktivitas ke database.']);
     }
 }

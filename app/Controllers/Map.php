@@ -13,10 +13,20 @@ class Map extends BaseController
         }
 
         $groupModel = new \App\Models\FarmerGroupModel();
+        $role = session()->get('role');
+        $groups = [];
+        if ($role === 'admin') {
+            $groups = $groupModel->findAll();
+        } elseif ($role === 'ppl') {
+            $groups = $groupModel->where('id_ppl', session()->get('id_user'))->findAll();
+        } else {
+            $groups = $groupModel->where('id_kelompok', session()->get('id_kelompok'))->findAll();
+        }
+
         $data = [
             'title' => 'Peta Utama - AgriMapGIS',
-            'role'  => session()->get('role'),
-            'groups' => $groupModel->findAll()
+            'role'  => $role,
+            'groups' => $groups
         ];
         
         return view('map/index', $data);
@@ -92,13 +102,17 @@ class Map extends BaseController
 
     public function apiLands()
     {
+        if (!session()->get('is_logged_in')) {
+            return $this->response->setJSON(['type' => 'FeatureCollection', 'features' => []]);
+        }
+
         $userRole = session()->get('role');
         $userId = session()->get('id_user');
         $landModel = new LandModel();
         
         $builder = $landModel->builder();
         $builder->select('id_lahan, id_kelompok, nama_lahan, komoditas, status_fase, status_bencana, alamat, luas, latitude, longitude, created_at');
-        $builder->select('ST_AsGeoJSON(geom, 6, 2) as geojson');
+        $builder->select('ST_AsGeoJSON(geom, 6, 0) as geojson');
         
         $reqGroup = $this->request->getGet('id_kelompok');
 
@@ -153,5 +167,56 @@ class Map extends BaseController
             'type' => 'FeatureCollection',
             'features' => $features
         ]);
+    }
+
+    /**
+     * Hama Heatmap API — returns lat/lng points of recent "pengendalian_hama" 
+     * activities in the past 30 days, with intensity based on frequency.
+     */
+    public function apiHeatmap()
+    {
+        if (!session()->get('is_logged_in')) {
+            return $this->response->setJSON([]);
+        }
+
+        $db = \Config\Database::connect();
+        $userRole = session()->get('role');
+        $days = (int)($this->request->getGet('days') ?? 30);
+        if ($days > 180) $days = 180;
+
+        $since = date('Y-m-d', strtotime("-{$days} days"));
+
+        $query = $db->table('activities')
+            ->select('lands.latitude, lands.longitude, COUNT(*) as intensity')
+            ->join('lands', 'lands.id_lahan = activities.id_lahan')
+            ->where('activities.jenis_aktivitas', 'pengendalian_hama')
+            ->where('activities.tanggal >=', $since)
+            ->groupBy('lands.id_lahan')
+            ->having('lands.latitude IS NOT NULL');
+
+        if ($userRole === 'ppl') {
+            $groupModel = new \App\Models\FarmerGroupModel();
+            $groups = $groupModel->where('id_ppl', session()->get('id_user'))->findAll();
+            $ids = array_column($groups, 'id_kelompok');
+            if (empty($ids)) $ids = [0];
+            $query->whereIn('lands.id_kelompok', $ids);
+        } elseif ($userRole === 'petani') {
+            $query->where('lands.id_kelompok', session()->get('id_kelompok'));
+        }
+
+        $rows = $query->get()->getResultArray();
+
+        $points = [];
+        foreach ($rows as $r) {
+            if ($r['latitude'] && $r['longitude']) {
+                $points[] = [
+                    (float)$r['latitude'],
+                    (float)$r['longitude'],
+                    min((int)$r['intensity'], 10) // cap intensity at 10
+                ];
+            }
+        }
+
+        return $this->response->setJSON($points);
     }
 }

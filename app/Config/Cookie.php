@@ -57,13 +57,20 @@ class Cookie extends BaseConfig
     public bool $secure = false;
 
     /**
-     * --------------------------------------------------------------------------
      * Cookie HTTPOnly
-     * --------------------------------------------------------------------------
-     *
-     * Cookie will only be accessible via HTTP(S) (no JavaScript).
      */
     public bool $httponly = true;
+
+    public function __construct()
+    {
+        parent::__construct();
+        
+        // Dynamically set secure cookie if accessed via HTTPS (e.g. Ngrok)
+        if (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || 
+            isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') {
+            $this->secure = true;
+        }
+    }
 
     /**
      * --------------------------------------------------------------------------

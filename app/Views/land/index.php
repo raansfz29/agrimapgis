@@ -158,10 +158,26 @@
                             </td>
                             <td class="text-center fw-bold"><?= number_format($land['luas'] ?? 0, 2) ?> ha</td>
                             <td class="text-center">
-                                <span class="badge bg-success bg-opacity-10 text-success rounded-pill px-3 d-print-none">
-                                    <?= esc(ucwords(str_replace('_', ' ', $land['status_fase'] ?? 'Aktif'))) ?>
+                                <?php
+                                    $faseLower = strtolower($land['status_fase'] ?? 'aktif');
+                                    if (strpos($faseLower, 'persiapan') !== false) {
+                                        $faseColor = '#fbbf24';
+                                    } elseif (strpos($faseLower, 'pemeliharaan') !== false) {
+                                        $faseColor = '#3b82f6';
+                                    } elseif (strpos($faseLower, 'panen') !== false) {
+                                        $faseColor = '#f59e0b';
+                                    } elseif (strpos($faseLower, 'bera') !== false) {
+                                        $faseColor = '#94a3b8';
+                                    } elseif (strpos($faseLower, 'bencana') !== false) {
+                                        $faseColor = '#ef4444';
+                                    } else {
+                                        $faseColor = '#22c55e'; // Tanam / Default
+                                    }
+                                ?>
+                                <span class="badge rounded-pill px-3 py-2 d-print-none text-uppercase" style="background: <?= $faseColor ?>20; color: <?= $faseColor ?>; font-size: 10px; font-weight: 800;">
+                                    <?= esc(str_replace('_', ' ', $land['status_fase'] ?? 'Aktif')) ?>
                                 </span>
-                                <span class="d-none d-print-block"><?= esc(ucwords(str_replace('_', ' ', $land['status_fase'] ?? 'Aktif'))) ?></span>
+                                <span class="d-none d-print-block text-uppercase"><?= esc(str_replace('_', ' ', $land['status_fase'] ?? 'Aktif')) ?></span>
                             </td>
                             <td class="text-center"><?= date('d M Y', strtotime($land['created_at'])) ?></td>
                             <td class="text-center d-print-none">

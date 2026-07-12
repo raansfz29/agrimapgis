@@ -39,7 +39,7 @@
 <?php if (!isset($group)): ?>
 <!-- TAMPILAN DAFTAR KELOMPOK TANI -->
 <div class="premium-card mb-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-4 page-title-area">
         <div>
             <h5 class="fw-800 mb-0">Daftar Kelompok Tani Terdaftar</h5>
             <p class="text-muted small mb-0">Kelola master data kelompok tani wilayah Rajabasa.</p>
@@ -63,6 +63,7 @@
                     <th class="border-0 small fw-800 text-muted">WILAYAH</th>
                     <th class="border-0 small fw-800 text-muted">GAPOKTAN</th>
                     <th class="border-0 small fw-800 text-muted">KOMODITAS</th>
+                    <th class="border-0 small fw-800 text-muted text-center">LAHAN</th>
                     <th class="border-0 small fw-800 text-muted text-center">ANGGOTA</th>
                     <th class="border-0 small fw-800 text-muted text-center d-print-none">AKSI</th>
                 </tr>
@@ -82,22 +83,28 @@
                                     <div class="d-flex flex-wrap gap-1">
                                     <?php 
                                         $komoditasList = array_map('trim', explode(',', $g['komoditas_aktual']));
-                                        $colors = [
-                                            ['text' => 'text-success', 'bg' => 'bg-success'],
-                                            ['text' => 'text-primary', 'bg' => 'bg-primary'],
-                                            ['text' => 'text-info',    'bg' => 'bg-info']
-                                        ];
-                                        foreach ($komoditasList as $index => $komoditasItem):
-                                            $color = $colors[$index % count($colors)];
+                                        foreach ($komoditasList as $komoditasItem):
+                                            $lowerItem = strtolower($komoditasItem);
+                                            if (strpos($lowerItem, 'padi') !== false) {
+                                                $color = ['text' => 'text-primary', 'bg' => 'bg-primary'];
+                                            } elseif (strpos($lowerItem, 'jagung') !== false) {
+                                                $color = ['text' => 'text-success', 'bg' => 'bg-success'];
+                                            } else {
+                                                $color = ['text' => 'text-info', 'bg' => 'bg-info'];
+                                            }
                                     ?>
                                         <span class="badge <?= $color['bg'] ?> bg-opacity-10 <?= $color['text'] ?> rounded-pill" style="font-size: 10px;">
-                                            <?= esc(ucwords(trim($komoditasItem))) ?>
+                                            <?= esc(ucwords($komoditasItem)) ?>
                                         </span>
                                     <?php endforeach; ?>
                                     </div>
                                 <?php else: ?>
                                     <span class="text-muted small">-</span>
                                 <?php endif; ?>
+                            </td>
+                            <td class="text-center">
+                                <div class="fw-900 text-dark" style="font-size: 16px; line-height: 1.2;"><?= $g['total_lahan'] ?> <small class="fw-700 text-muted" style="font-size: 11px;">Plot</small></div>
+                                <div class="text-success fw-800" style="font-size: 12px;"><?= number_format($g['total_luas'], 1) ?> Ha</div>
                             </td>
                             <td class="text-center"><span class="badge bg-primary bg-opacity-10 text-primary rounded-pill px-3"><?= $g['total_anggota'] ?> Petani</span></td>
                             <td class="text-center d-print-none">
@@ -178,7 +185,7 @@
 <?php if (isset($group)): ?>
 <!-- TAMPILAN DETAIL KELOMPOK (UNTUK PPL ATAU ADMIN YANG MELIHAT DETAIL) -->
 <div class="d-flex align-items-center mb-4">
-    <a href="<?= base_url('farmer-groups') ?>" class="btn btn-light rounded-pill shadow-sm fw-bold me-3"><i class="fas fa-arrow-left me-2"></i>Kembali</a>
+    <a href="<?= session()->get('role') === 'petani' ? base_url('dashboard') : base_url('farmer-groups') ?>" class="btn btn-light rounded-pill shadow-sm fw-bold me-3"><i class="fas fa-arrow-left me-2"></i>Kembali</a>
     <h5 class="fw-800 mb-0">Detail Manajemen Kelompok</h5>
 </div>
 
@@ -190,7 +197,9 @@
                 <i class="fas fa-users text-success fs-2"></i>
             </div>
             <div class="text-center position-relative">
+                <?php if (session()->get('role') !== 'petani'): ?>
                 <button type="button" class="btn btn-light text-primary btn-sm position-absolute top-0 end-0 rounded-circle" style="width: 35px; height: 35px; margin-top: -10px; margin-right: -10px;" data-bs-toggle="modal" data-bs-target="#editGroupModal" title="Edit Kelompok"><i class="fas fa-edit"></i></button>
+                <?php endif; ?>
                 <h4 class="fw-800 mb-1"><?= esc($group['nama_kelompok']) ?></h4>
                 <p class="text-muted small mb-4">Wilayah Kerja: <?= esc($group['kecamatan']) ?></p>
             </div>
@@ -246,9 +255,11 @@
                     <span class="text-success small fw-800"><i class="fas fa-check-circle me-1"></i> Aktif</span>
                 </div>
 
+                <?php if (session()->get('role') !== 'petani'): ?>
                 <a href="<?= base_url('peta-gis?add_land=true&id_kelompok=' . $group['id_kelompok']) ?>" class="btn btn-outline-success w-100 rounded-pill fw-bold mt-4 shadow-sm py-2">
                     <i class="fas fa-map-location-dot me-2"></i> Tambah Lahan Baru
                 </a>
+                <?php endif; ?>
             </div>
         </div>
     </div>
@@ -258,7 +269,12 @@
         <div class="premium-card h-100">
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <h6 class="fw-800 mb-0">Data Petani Lengkap</h6>
+                <?php 
+                $canManageMembers = (session()->get('role') === 'admin' || session()->get('role') === 'ppl' || (isset($is_ketua) && $is_ketua)); 
+                if ($canManageMembers): 
+                ?>
                 <button class="btn btn-primary btn-sm border-0 shadow-sm rounded-pill px-4 fw-bold py-2" data-bs-toggle="modal" data-bs-target="#addfarmerModal"><i class="fas fa-user-plus me-1"></i> Tambah Anggota</button>
+                <?php endif; ?>
             </div>
             
             <div class="table-responsive">
@@ -296,11 +312,57 @@
                                         <span class="badge bg-warning bg-opacity-10 text-warning rounded-pill px-3"><?= $farmer['total_aktivitas'] ?> Laporan</span>
                                     </td>
                                     <td class="text-center">
-                                        <div class="btn-group">
+                                        <div class="btn-group gap-1">
                                             <a href="<?= base_url('message/chat/'.$farmer['id_user']) ?>" class="btn btn-light btn-xs border rounded-circle p-2" title="Kirim Pesan"><i class="fas fa-comment-alt text-primary"></i></a>
+                                            <?php if ($canManageMembers): ?>
+                                            <button type="button" class="btn btn-light btn-xs border rounded-circle p-2 text-warning" title="Edit Anggota" data-bs-toggle="modal" data-bs-target="#editfarmerModal<?= $farmer['id_user'] ?>"><i class="fas fa-edit"></i></button>
+                                            <a href="<?= base_url('farmer-groups/delete-farmer/'.$farmer['id_user']) ?>" class="btn btn-light btn-xs border rounded-circle p-2 text-danger" title="Hapus Anggota" onclick="return confirm('Yakin ingin menghapus anggota ini?');"><i class="fas fa-trash-alt"></i></a>
+                                            <?php endif; ?>
                                         </div>
                                     </td>
                                 </tr>
+
+                                <?php if ($canManageMembers): ?>
+                                <!-- Edit Farmer Modal -->
+                                <div class="modal fade" id="editfarmerModal<?= $farmer['id_user'] ?>" tabindex="-1">
+                                    <div class="modal-dialog modal-dialog-centered">
+                                        <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
+                                            <div class="modal-header border-0 bg-light rounded-top-4 p-4 pb-3">
+                                                <div>
+                                                    <h5 class="modal-title fw-800">Edit Anggota Petani</h5>
+                                                    <p class="text-muted small mb-0 mt-1">Perbarui informasi anggota kelompok</p>
+                                                </div>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                            </div>
+                                            <form action="<?= base_url('farmer-groups/update-farmer/'.$farmer['id_user']) ?>" method="post">
+                                                <?= csrf_field() ?>
+                                                <div class="modal-body p-4">
+                                                    <div class="mb-3">
+                                                        <label class="form-label small fw-bold text-muted">NAMA LENGKAP</label>
+                                                        <input type="text" name="nama" class="form-control rounded-3" value="<?= esc($farmer['nama']) ?>" required>
+                                                    </div>
+                                                    <div class="mb-3">
+                                                        <label class="form-label small fw-bold text-muted">EMAIL</label>
+                                                        <input type="email" name="email" class="form-control rounded-3" value="<?= esc($farmer['email']) ?>" required>
+                                                    </div>
+                                                    <div class="mb-3">
+                                                        <label class="form-label small fw-bold text-muted">PASSWORD BARU (Opsional)</label>
+                                                        <input type="password" name="password" class="form-control rounded-3" placeholder="Kosongkan jika tidak ingin mengubah password">
+                                                    </div>
+                                                    <div class="mb-3">
+                                                        <label class="form-label small fw-bold text-muted">NO. TELEPON</label>
+                                                        <input type="text" name="telepon" class="form-control rounded-3" value="<?= esc($farmer['telepon']) ?>">
+                                                    </div>
+                                                </div>
+                                                <div class="modal-footer border-0 p-4 pt-0">
+                                                    <button type="button" class="btn btn-light rounded-pill px-4 fw-bold" data-bs-dismiss="modal">Batal</button>
+                                                    <button type="submit" class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm">Simpan Perubahan</button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                                <?php endif; ?>
                             <?php endforeach; ?>
                         <?php endif; ?>
                     </tbody>

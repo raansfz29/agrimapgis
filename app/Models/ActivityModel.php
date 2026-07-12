@@ -52,7 +52,7 @@ class ActivityModel extends Model
         
         if ($pointGeoJSON) {
             $sql = "INSERT INTO {$this->table} (id_lahan, id_user, jenis_aktivitas, tanggal, deskripsi, foto, status, koordinat) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ST_GeomFromGeoJSON(?, 2, 0))";
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ST_GeomFromGeoJSON(?, 2, 4326))";
             
             $db->query($sql, [
                 $data['id_lahan'],
