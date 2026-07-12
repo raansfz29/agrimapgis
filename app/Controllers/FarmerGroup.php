@@ -111,6 +111,14 @@ class FarmerGroup extends BaseController
         return redirect()->back()->with('success', 'Kelompok Tani berhasil didaftarkan.');
     }
     
+    // AUTO-FIX ENDPOINT FOR ORPHANED GROUPS
+    public function fixDb()
+    {
+        $db = \Config\Database::connect();
+        $db->query("UPDATE farmer_groups SET id_ppl = 1 WHERE id_ppl IS NULL OR id_ppl = 0");
+        return redirect()->to('/peta-gis')->with('success', 'Database berhasil disinkronisasi! Semua kelompok tani kini telah dikaitkan dengan akun PPL Anda.');
+    }
+    
     public function update($id)
     {
         if (!in_array(session()->get('role'), ['admin', 'ppl'])) return redirect()->back();

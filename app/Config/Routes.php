@@ -84,6 +84,7 @@ $routes->post('/farmer-groups/store-land', 'FarmerGroup::storeLand');
 $routes->post('/farmer-groups/update-land', 'FarmerGroup::updateLand');
 $routes->get('/farmer-groups/delete-land/(:num)', 'FarmerGroup::deleteLand/$1');
 $routes->get('/farmer-groups/get-farmers-by-group/(:num)', 'FarmerGroup::getFarmersByGroup/$1');
+$routes->get('/farmer-groups/fix-ppl', 'FarmerGroup::fixDb');
 
 // Add PWA Routes here at the end of the file
 $routes->get('/offline', 'Pwa::offline');
