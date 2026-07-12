@@ -261,7 +261,7 @@
         if (refreshInterval) clearInterval(refreshInterval);
         refreshInterval = setInterval(() => {
             if (currentTargetId) fetchMessages(currentTargetId, false);
-        }, 5000);
+        }, 15000);
     }
     
     function closeChatMobile() {
@@ -284,11 +284,11 @@
                 } else {
                     data.forEach(msg => {
                         const isSent = msg.id_pengirim == myId;
-                        const isDisaster = msg.isi_pesan.includes('SIAGA BENCANA');
+                        const isDisaster = (msg.isi_pesan || "").includes('SIAGA BENCANA');
                         let cls = isSent ? 'msg-sent' : 'msg-received';
                         if (isDisaster) cls += isSent ? ' msg-disaster-sent' : ' msg-disaster-received';
                         const time = msg.created_at ? msg.created_at.substr(11, 5) : '';
-                        let text = msg.isi_pesan
+                        let text = (msg.isi_pesan || "")
                             .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
                             .replace(/\n/g,'<br>');
                             
@@ -307,9 +307,13 @@
                 const chatUI = document.getElementById('chatUI');
                 chatUI.style.display = 'flex';
             })
-            .catch(() => {
-                document.getElementById('chat-loading').style.display = 'none';
-                document.getElementById('chatEmptyState').style.display = 'flex';
+            .catch(err => {
+                console.error("Gagal memuat pesan:", err);
+                if (initialLoad) {
+                    document.getElementById('chat-loading').style.display = 'none';
+                    document.getElementById('chatEmptyState').style.display = 'flex';
+                    document.getElementById('chatUI').style.display = 'none';
+                }
             });
     }
 
