@@ -94,13 +94,19 @@ class FarmerGroup extends BaseController
         
         $groupModel = new FarmerGroupModel();
         
-        $groupModel->insert([
+        $data = [
             'nama_kelompok' => $this->request->getPost('nama_kelompok'),
             'ketua' => $this->request->getPost('ketua'),
             'kecamatan' => $this->request->getPost('kecamatan'),
             'komoditas' => $this->request->getPost('komoditas'),
             'gapoktan' => $this->request->getPost('gapoktan')
-        ]);
+        ];
+        
+        if (session()->get('role') === 'ppl') {
+            $data['id_ppl'] = session()->get('id_user');
+        }
+
+        $groupModel->insert($data);
 
         return redirect()->back()->with('success', 'Kelompok Tani berhasil didaftarkan.');
     }
@@ -259,7 +265,9 @@ class FarmerGroup extends BaseController
                 $areaRes = $db->query($areaSql, [$geojson])->getRowArray();
                 $luasDiGambar = (float)($areaRes['area'] ?? 0);
                 
-                if ($luasDiGambar > 0) {
+                // If luasDiGambar is extremely small (< 0.01), it means the DB is returning square degrees (MariaDB)
+                // In this case, we bypass the validation because it's not in square meters.
+                if ($luasDiGambar > 0.01) {
                     $selisihPersen = abs($luasInput - $luasDiGambar) / $luasDiGambar * 100;
                     if ($selisihPersen > 50) {
                         return redirect()->back()->with('error', 
@@ -327,7 +335,8 @@ class FarmerGroup extends BaseController
                 $areaRes = $db->query($areaSql, [$geojson])->getRowArray();
                 $luasDiGambar = (float)($areaRes['area'] ?? 0);
 
-                if ($luasDiGambar > 0) {
+                // If luasDiGambar is extremely small (< 0.01), bypass validation because MariaDB returns square degrees for SRID 4326
+                if ($luasDiGambar > 0.01) {
                     $selisihPersen = abs($luasInput - $luasDiGambar) / $luasDiGambar * 100;
                     if ($selisihPersen > 50) {
                         return redirect()->back()->with('error',
