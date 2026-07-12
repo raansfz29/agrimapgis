@@ -56,6 +56,7 @@ $routes->get('/disaster/add', 'Disaster::add');
 $routes->post('/disaster/activate', 'Disaster::activate');
 $routes->post('/disaster/deactivate', 'Disaster::deactivate');
 $routes->post('/disaster/broadcast', 'Disaster::broadcast');
+$routes->post('/disaster/broadcast-alert', 'Disaster::broadcast');
 
 // Map Routes
 $routes->get('/peta-gis', 'Map::index');
