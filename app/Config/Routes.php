@@ -52,9 +52,11 @@ $routes->get('/trace/(:num)', 'Trace::index/$1');
 
 // Disaster Routes
 $routes->get('/disaster', 'Disaster::index');
-$routes->get('/disaster/add', 'Disaster::add');
-$routes->post('/disaster/activate', 'Disaster::activate');
-$routes->post('/disaster/deactivate', 'Disaster::deactivate');
+$routes->get('/disaster/log/(:num)', 'Disaster::log/$1');
+$routes->post('/disaster/submitLog/(:num)', 'Disaster::submitLog/$1');
+$routes->get('/disaster/activate/(:num)', 'Disaster::activate/$1');
+$routes->post('/disaster/activate/(:num)', 'Disaster::activateSubmit/$1');
+$routes->post('/disaster/deactivate/(:num)', 'Disaster::deactivate/$1');
 $routes->post('/disaster/broadcast', 'Disaster::broadcastAlert');
 $routes->post('/disaster/broadcast-alert', 'Disaster::broadcastAlert');
 
